@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from .const import DOMAIN
 from .coordinator import PrinterEnergyCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -28,7 +28,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         existing_coordinator._update_cost_config(config)
         coordinator = existing_coordinator
     else:
-        coordinator = PrinterEnergyCoordinator(hass, config)
+        # Create coordinator with entry_id for per-instance storage
+        coordinator = PrinterEnergyCoordinator(hass, config, entry.entry_id)
         hass.data[DOMAIN][entry.entry_id] = coordinator
         
         # Set up listeners first, before first refresh
@@ -62,7 +63,25 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             new_data[CONF_CURRENCY] = DEFAULT_CURRENCY
         
         hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
-        return True
+        version = 2
+    
+    # Migration from version 2 to 3: Migrate old shared storage to per-entry storage
+    if version == 2:
+        from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+        from homeassistant.helpers.storage import Store
+        
+        # Try to load old shared storage and migrate to new entry-specific storage
+        old_store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        old_data = await old_store.async_load()
+        
+        if old_data:
+            # Migrate to entry-specific storage
+            from .storage import PrinterEnergyStorage
+            new_storage = PrinterEnergyStorage(hass, config_entry.entry_id)
+            await new_storage.save(old_data)
+            # Note: We don't delete old storage here to allow other instances to migrate
+        
+        hass.config_entries.async_update_entry(config_entry, version=3)
     
     return True
 

@@ -24,6 +24,8 @@ from .const import (
     DEFAULT_ENERGY_COST,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
 from .storage import PrinterEnergyStorage
 
@@ -35,6 +37,7 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         config: dict[str, Any],
+        entry_id: str,
     ) -> None:
         """Initialize the coordinator."""
         super().__init__(
@@ -44,6 +47,7 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
             update_interval=None,  # We update on state changes, not on interval
         )
         self.hass = hass
+        self.entry_id = entry_id
         self.energy_sensor = config[CONF_ENERGY_SENSOR]
         self.printing_sensor = config[CONF_PRINTING_SENSOR]
         printing_state_config = config.get(CONF_PRINTING_STATE, "on")
@@ -62,7 +66,8 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         material_sensor_config = config.get(CONF_MATERIAL_SENSOR)
         self.material_sensor = material_sensor_config.strip() if material_sensor_config and isinstance(material_sensor_config, str) else (material_sensor_config if material_sensor_config else None)
         
-        self.storage = PrinterEnergyStorage(hass)
+        # Create entry-specific storage to prevent data sharing between instances
+        self.storage = PrinterEnergyStorage(hass, entry_id)
         
         # Update cost configuration
         self._update_cost_config(config)
@@ -118,6 +123,33 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
     async def _load_persisted_data(self) -> None:
         """Load persisted data from storage."""
         data = await self.storage.load()
+        
+        # Check if entry-specific storage is empty (new entry or first load after migration)
+        # If empty, try to migrate from old shared storage (one-time migration)
+        has_data = data and (
+            data.get("total_energy", 0.0) > 0 
+            or data.get("print_count", 0) > 0
+            or data.get("total_cost", 0.0) > 0
+        )
+        
+        if not has_data:
+            # Try to migrate from old shared storage key (for entries migrated from version 2)
+            from homeassistant.helpers.storage import Store
+            
+            old_store = Store(self.hass, STORAGE_VERSION, STORAGE_KEY)
+            old_data = await old_store.async_load()
+            
+            if old_data and (old_data.get("total_energy", 0.0) > 0 or old_data.get("print_count", 0) > 0):
+                # Found old shared data, migrate it to this entry's storage
+                # Note: Each entry will get its own copy of the old data, then diverge independently
+                self.logger.info(
+                    f"Migrating old shared storage data to entry-specific storage "
+                    f"for entry {self.entry_id}. This is a one-time migration."
+                )
+                data = old_data.copy()  # Copy to avoid reference issues
+                # Save migrated data to entry-specific storage
+                await self.storage.save(data)
+        
         self.total_energy = data.get("total_energy", 0.0)
         self.print_count = data.get("print_count", 0)
         self.last_print_energy = data.get("last_print_energy", 0.0)

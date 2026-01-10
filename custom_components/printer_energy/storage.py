@@ -5,16 +5,18 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN, STORAGE_KEY, STORAGE_VERSION
+from .const import DOMAIN, STORAGE_VERSION
 
 
 class PrinterEnergyStorage:
     """Handle storage for printer energy data."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize storage."""
+    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+        """Initialize storage with entry-specific key."""
         self.hass = hass
-        self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        # Use entry_id to create unique storage for each instance
+        storage_key = f"{DOMAIN}.{entry_id}.storage"
+        self.store = Store(hass, STORAGE_VERSION, storage_key)
 
     async def load(self) -> dict:
         """Load data from storage."""

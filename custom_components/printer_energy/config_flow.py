@@ -31,7 +31,7 @@ from .const import (
 class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Printer Energy."""
 
-    VERSION = 2
+    VERSION = 3
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -131,34 +131,7 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Manage the options menu."""
-        errors = {}
-        if user_input is not None:
-            if user_input["next_step"] == "options":
-                return await self.async_step_options()
-            elif user_input["next_step"] == "reset":
-                return await self.async_step_reset_confirm()
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("next_step", default="options"): vol.In(
-                        {
-                            "options": "⚙️ Configure Settings",
-                            "reset": "⚠️ Reset All Data",
-                        }
-                    ),
-                }
-            ),
-            description_placeholders={
-                "name": self.config_entry.title,
-            },
-            errors=errors,
-        )
-
-    async def async_step_options(self, user_input=None):
-        """Handle options configuration."""
+        """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -229,42 +202,4 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="options", data_schema=schema)
-
-    async def async_step_reset_confirm(self, user_input=None):
-        """Confirm reset data."""
-        errors = {}
-        if user_input is not None:
-            if user_input.get("confirm") is True:
-                # Reset data
-                hass = self.hass
-                coordinator = hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
-                
-                if coordinator:
-                    from .coordinator import PrinterEnergyCoordinator
-                    if isinstance(coordinator, PrinterEnergyCoordinator):
-                        await coordinator.async_reset_data()
-                        # Reload entry to refresh all sensors
-                        await hass.config_entries.async_reload(self.config_entry.entry_id)
-                        return self.async_create_entry(title="", data={})
-                    else:
-                        errors["base"] = "invalid_coordinator"
-                else:
-                    errors["base"] = "coordinator_not_found"
-            else:
-                # User cancelled, go back to menu
-                return await self.async_step_init()
-
-        return self.async_show_form(
-            step_id="reset_confirm",
-            data_schema=vol.Schema(
-                {
-                    vol.Required("confirm", default=False): bool,
-                }
-            ),
-            description_placeholders={
-                "name": self.config_entry.title,
-                "warning": "⚠️ This will reset ALL statistics including:\n- Total energy\n- Total material\n- Total costs\n- Print count\n- Last print data\n\nThis action CANNOT be undone!"
-            },
-            errors=errors,
-        )
+        return self.async_show_form(step_id="init", data_schema=schema)

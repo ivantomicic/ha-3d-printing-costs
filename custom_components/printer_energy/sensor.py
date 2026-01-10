@@ -50,14 +50,16 @@ async def async_setup_entry(
         TotalEnergySensor(coordinator, config_entry),
         PrintCountSensor(coordinator, config_entry),
         LastPrintEnergySensor(coordinator, config_entry),
-        LastPrintCostSensor(coordinator, config_entry),
+        LastPrintEnergyCostSensor(coordinator, config_entry),
+        LastPrintTotalCostSensor(coordinator, config_entry),
         TotalCostSensor(coordinator, config_entry),
     ]
     
-    # Add material sensor only if material tracking is configured
+    # Add material sensors only if material tracking is configured
     coordinator_instance: PrinterEnergyCoordinator = coordinator
     if coordinator_instance.material_sensor:
         entities.append(LastPrintMaterialSensor(coordinator, config_entry))
+        entities.append(LastPrintMaterialCostSensor(coordinator, config_entry))
 
     async_add_entities(entities)
 
@@ -298,17 +300,119 @@ class LastPrintMaterialSensor(PrinterEnergySensor):
         return attrs
 
 
-class LastPrintCostSensor(PrinterEnergySensor):
-    """Sensor for last print total cost."""
+class LastPrintEnergyCostSensor(PrinterEnergySensor):
+    """Sensor for last print energy cost."""
 
-    _attr_name = "Last Print Cost"
+    _attr_name = "Last Print Energy Cost"
+    _attr_icon = "mdi:flash-circle"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return "last_print_energy_cost"
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency unit."""
+        if self.coordinator.data and self.coordinator.data.get("currency"):
+            return self.coordinator.data.get("currency")
+        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+
+    @property
+    def native_value(self) -> float:
+        """Return the last print energy cost."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("last_print_energy_cost", 0.0), 2)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            attrs[ATTR_LAST_PRINT_ENERGY] = self.coordinator.data.get(
+                "last_print_energy", 0.0
+            )
+            attrs[ATTR_LAST_PRINT_MATERIAL_COST] = self.coordinator.data.get(
+                "last_print_material_cost", 0.0
+            )
+            attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                "last_print_total_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_ENERGY_COST] = self.coordinator.data.get(
+                "total_energy_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_COST] = self.coordinator.data.get("total_cost", 0.0)
+        return attrs
+
+
+class LastPrintMaterialCostSensor(PrinterEnergySensor):
+    """Sensor for last print material cost."""
+
+    _attr_name = "Last Print Material Cost"
     _attr_icon = "mdi:currency-usd"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return "last_print_cost"
+        return "last_print_material_cost"
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency unit."""
+        if self.coordinator.data and self.coordinator.data.get("currency"):
+            return self.coordinator.data.get("currency")
+        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+
+    @property
+    def native_value(self) -> float:
+        """Return the last print material cost."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("last_print_material_cost", 0.0), 2)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            attrs[ATTR_LAST_PRINT_MATERIAL] = self.coordinator.data.get(
+                "last_print_material", 0.0
+            )
+            attrs[ATTR_LAST_PRINT_ENERGY_COST] = self.coordinator.data.get(
+                "last_print_energy_cost", 0.0
+            )
+            attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                "last_print_total_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_MATERIAL_COST] = self.coordinator.data.get(
+                "total_material_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_COST] = self.coordinator.data.get("total_cost", 0.0)
+        return attrs
+
+
+class LastPrintTotalCostSensor(PrinterEnergySensor):
+    """Sensor for last print total cost (energy + material)."""
+
+    _attr_name = "Last Print Total Cost"
+    _attr_icon = "mdi:currency-usd"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return "last_print_total_cost"
 
     @property
     def native_unit_of_measurement(self) -> str:

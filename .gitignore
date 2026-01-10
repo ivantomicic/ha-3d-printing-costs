@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
 build/
 develop-eggs/
 dist/
@@ -20,12 +23,10 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
-venv/
-ENV/
-env/
+# Home Assistant
+.homeassistant/
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -35,9 +36,6 @@ env/
 # OS
 .DS_Store
 Thumbs.db
-
-# Home Assistant
-.homeassistant/
 
 # Testing
 .pytest_cache/

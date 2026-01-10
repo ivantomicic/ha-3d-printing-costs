@@ -1,12 +1,13 @@
 {
   "domain": "printer_energy",
-  "name": "Printer Energy Tracker",
-  "codeowners": ["@ivantomicic"],
+  "name": "3D Printer Energy Tracker",
+  "codeowners": ["@ivans-ha-stuff"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/ivantomicic/ha-3d-printing-costs",
-  "integration_type": "system",
-  "iot_class": "calculated",
+  "documentation": "https://github.com/ivans-ha-stuff/ha-3d-printing-costs",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/ivans-ha-stuff/ha-3d-printing-costs/issues",
   "requirements": [],
   "version": "1.0.0"
 }

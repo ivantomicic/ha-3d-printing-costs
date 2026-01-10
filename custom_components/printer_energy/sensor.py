@@ -1,202 +1,442 @@
-"""Sensor entities for Printer Energy Tracker."""
+"""Sensor platform for Printer Energy integration."""
 
+from __future__ import annotations
+
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
-    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.const import UnitOfEnergy
+from homeassistant.util import dt as dt_util
 
 from .const import (
-    ATTR_ACTIVE_PRINT,
-    ATTR_ENERGY_KWH,
-    ATTR_END_TIME,
+    ATTR_CURRENT_SESSION_ENERGY,
+    ATTR_CURRENT_SESSION_ENERGY_COST,
+    ATTR_CURRENT_SESSION_MATERIAL,
+    ATTR_CURRENT_SESSION_MATERIAL_COST,
+    ATTR_CURRENT_SESSION_TOTAL_COST,
+    ATTR_LAST_PRINT_ENERGY,
+    ATTR_LAST_PRINT_ENERGY_COST,
+    ATTR_LAST_PRINT_END,
+    ATTR_LAST_PRINT_MATERIAL,
+    ATTR_LAST_PRINT_MATERIAL_COST,
+    ATTR_LAST_PRINT_START,
+    ATTR_LAST_PRINT_TOTAL_COST,
     ATTR_PRINT_COUNT,
-    ATTR_START_ENERGY,
-    ATTR_START_TIME,
+    ATTR_TOTAL_COST,
+    ATTR_TOTAL_ENERGY,
+    ATTR_TOTAL_ENERGY_COST,
+    ATTR_TOTAL_MATERIAL,
+    ATTR_TOTAL_MATERIAL_COST,
     DOMAIN,
+    SENSOR_CURRENT_SESSION,
+    SENSOR_LAST_PRINT_COST,
+    SENSOR_LAST_PRINT_ENERGY,
+    SENSOR_LAST_PRINT_MATERIAL,
+    SENSOR_PRINT_COUNT,
+    SENSOR_TOTAL_COST,
+    SENSOR_TOTAL_ENERGY,
 )
 from .coordinator import PrinterEnergyCoordinator
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up sensors from a config entry."""
-    coordinator: PrinterEnergyCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up the printer energy sensors."""
+    coordinator: PrinterEnergyCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    async_add_entities(
-        [
-            LastPrintEnergySensor(coordinator, entry),
-            TotalPrintEnergySensor(coordinator, entry),
-            PrintCountSensor(coordinator, entry),
-        ]
-    )
+    entities = [
+        TotalEnergySensor(coordinator, config_entry),
+        CurrentSessionEnergySensor(coordinator, config_entry),
+        PrintCountSensor(coordinator, config_entry),
+        LastPrintEnergySensor(coordinator, config_entry),
+        LastPrintCostSensor(coordinator, config_entry),
+        TotalCostSensor(coordinator, config_entry),
+    ]
+    
+    # Add material sensor only if material tracking is configured
+    coordinator_instance: PrinterEnergyCoordinator = coordinator
+    if coordinator_instance.material_sensor:
+        entities.append(LastPrintMaterialSensor(coordinator, config_entry))
+
+    async_add_entities(entities)
 
 
-class PrinterEnergySensor(CoordinatorEntity[PrinterEnergyCoordinator], SensorEntity):
+class PrinterEnergySensor(CoordinatorEntity, SensorEntity):
     """Base class for printer energy sensors."""
 
-    _attr_has_entity_name = True
-    _attr_should_poll = False
-
     def __init__(
         self,
         coordinator: PrinterEnergyCoordinator,
-        entry: ConfigEntry,
+        config_entry: ConfigEntry,
     ) -> None:
-        """Initialize sensor."""
+        """Initialize the sensor."""
         super().__init__(coordinator)
-        self._entry_id = entry.entry_id
-        self._attr_unique_id = f"{entry.entry_id}_{self.entity_description.key}"
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self._entry_id)},
-            "name": "Printer Energy Tracker",
-            "manufacturer": "Home Assistant",
-            "model": "Printer Energy Tracker",
+        self.config_entry = config_entry
+        self._attr_unique_id = f"{config_entry.entry_id}_{self.entity_key}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, config_entry.entry_id)},
+            "name": config_entry.data.get("name", "3D Printer Energy Tracker"),
+            "manufacturer": "Custom",
+            "model": "3D Printer Energy Tracker",
         }
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self.async_write_ha_state()
-
-
-class LastPrintEnergySensor(PrinterEnergySensor):
-    """Sensor for energy used in the last print."""
-
-    entity_description = SensorEntityDescription(
-        key="last_print_energy",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-    )
-
-    def __init__(
-        self,
-        coordinator: PrinterEnergyCoordinator,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_name = "Last Print Energy"
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key for unique_id."""
+        raise NotImplementedError
 
     @property
-    def native_value(self) -> float | None:
-        """Return the energy used in the last print."""
-        last_print = self.coordinator.data.get("last_print")
-        if last_print:
-            return last_print.energy_kwh
-        return None
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+
+class TotalEnergySensor(PrinterEnergySensor):
+    """Sensor for total energy consumed during prints."""
+
+    _attr_name = "Total Energy"
+    _attr_native_unit_of_measurement = "kWh"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_icon = "mdi:flash"
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return extra state attributes."""
-        last_print = self.coordinator.data.get("last_print")
-        if not last_print:
-            return {}
-
-        attrs: dict[str, Any] = {
-            ATTR_START_TIME: last_print.start_time.isoformat(),
-            ATTR_END_TIME: last_print.end_time.isoformat(),
-            ATTR_ENERGY_KWH: last_print.energy_kwh,
-        }
-
-        # Add active print info if available
-        active_print = self.coordinator.data.get("active_print")
-        if active_print:
-            attrs[ATTR_ACTIVE_PRINT] = True
-            attrs[ATTR_START_ENERGY] = active_print.start_energy
-        else:
-            attrs[ATTR_ACTIVE_PRINT] = False
-
-        return attrs
-
-
-class TotalPrintEnergySensor(PrinterEnergySensor):
-    """Sensor for total energy used across all prints."""
-
-    entity_description = SensorEntityDescription(
-        key="total_print_energy",
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-    )
-
-    def __init__(
-        self,
-        coordinator: PrinterEnergyCoordinator,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_name = "Total Print Energy"
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_TOTAL_ENERGY
 
     @property
     def native_value(self) -> float:
-        """Return the total energy used across all prints."""
-        return self.coordinator.data.get("total_energy", 0.0)
+        """Return the total energy consumed."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("total_energy", 0.0), 3)
+        return 0.0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
-        return {
-            ATTR_PRINT_COUNT: self.coordinator.data.get("print_count", 0),
-        }
+        attrs = {}
+        if self.coordinator.data:
+            attrs[ATTR_PRINT_COUNT] = self.coordinator.data.get("print_count", 0)
+            attrs[ATTR_LAST_PRINT_ENERGY] = self.coordinator.data.get(
+                "last_print_energy", 0.0
+            )
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            if self.coordinator.data.get("last_print_material", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_MATERIAL] = self.coordinator.data.get(
+                    "last_print_material", 0.0
+                )
+            if self.coordinator.data.get("total_material", 0.0) > 0:
+                attrs[ATTR_TOTAL_MATERIAL] = self.coordinator.data.get(
+                    "total_material", 0.0
+                )
+            # Add cost information
+            attrs[ATTR_TOTAL_ENERGY_COST] = self.coordinator.data.get(
+                "total_energy_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_COST] = self.coordinator.data.get("total_cost", 0.0)
+            if self.coordinator.data.get("last_print_total_cost", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                    "last_print_total_cost", 0.0
+                )
+            if self.coordinator.data.get("total_material_cost", 0.0) > 0:
+                attrs[ATTR_TOTAL_MATERIAL_COST] = self.coordinator.data.get(
+                    "total_material_cost", 0.0
+                )
+        return attrs
+
+
+class CurrentSessionEnergySensor(PrinterEnergySensor):
+    """Sensor for current print session energy."""
+
+    _attr_name = "Current Session Energy"
+    _attr_native_unit_of_measurement = "kWh"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:gauge"
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_CURRENT_SESSION
+
+    @property
+    def native_value(self) -> float:
+        """Return the current session energy."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("current_session_energy", 0.0), 3)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            attrs["is_printing"] = self.coordinator.data.get("is_printing", False)
+            attrs["current_energy"] = self.coordinator.data.get("current_energy", 0.0)
+            if self.coordinator.data.get("current_session_material", 0.0) > 0:
+                attrs[ATTR_CURRENT_SESSION_MATERIAL] = self.coordinator.data.get(
+                    "current_session_material", 0.0
+                )
+            # Add cost information
+            if self.coordinator.data.get("current_session_total_cost", 0.0) > 0:
+                attrs[ATTR_CURRENT_SESSION_TOTAL_COST] = self.coordinator.data.get(
+                    "current_session_total_cost", 0.0
+                )
+                attrs[ATTR_CURRENT_SESSION_ENERGY_COST] = self.coordinator.data.get(
+                    "current_session_energy_cost", 0.0
+                )
+                if self.coordinator.data.get("current_session_material_cost", 0.0) > 0:
+                    attrs[ATTR_CURRENT_SESSION_MATERIAL_COST] = self.coordinator.data.get(
+                        "current_session_material_cost", 0.0
+                    )
+        return attrs
 
 
 class PrintCountSensor(PrinterEnergySensor):
-    """Sensor for total number of completed prints."""
+    """Sensor for print count."""
 
-    entity_description = SensorEntityDescription(
-        key="print_count",
-        device_class=None,
-        state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement=None,
-    )
+    _attr_name = "Print Count"
+    _attr_native_unit_of_measurement = "prints"
+    _attr_icon = "mdi:counter"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
-    def __init__(
-        self,
-        coordinator: PrinterEnergyCoordinator,
-        entry: ConfigEntry,
-    ) -> None:
-        """Initialize sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_name = "Print Count"
-        self._attr_icon = "mdi:printer-3d"
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_PRINT_COUNT
 
     @property
     def native_value(self) -> int:
-        """Return the total number of completed prints."""
-        return self.coordinator.data.get("print_count", 0)
+        """Return the print count."""
+        if self.coordinator.data:
+            return self.coordinator.data.get("print_count", 0)
+        return 0
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
-        attrs: dict[str, Any] = {
-            ATTR_PRINT_COUNT: self.native_value,
-        }
+        attrs = {}
+        if self.coordinator.data:
+            attrs[ATTR_TOTAL_ENERGY] = self.coordinator.data.get("total_energy", 0.0)
+            attrs[ATTR_LAST_PRINT_ENERGY] = self.coordinator.data.get(
+                "last_print_energy", 0.0
+            )
+            if self.coordinator.data.get("last_print_material", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_MATERIAL] = self.coordinator.data.get(
+                    "last_print_material", 0.0
+                )
+            if self.coordinator.data.get("total_material", 0.0) > 0:
+                attrs[ATTR_TOTAL_MATERIAL] = self.coordinator.data.get(
+                    "total_material", 0.0
+                )
+        return attrs
 
-        # Add active print info if available
-        active_print = self.coordinator.data.get("active_print")
-        if active_print:
-            attrs[ATTR_ACTIVE_PRINT] = True
-            attrs[ATTR_START_TIME] = active_print.start_time.isoformat()
-            attrs[ATTR_START_ENERGY] = active_print.start_energy
-        else:
-            attrs[ATTR_ACTIVE_PRINT] = False
 
+class LastPrintEnergySensor(PrinterEnergySensor):
+    """Sensor for last print energy consumption."""
+
+    _attr_name = "Last Print Energy"
+    _attr_native_unit_of_measurement = "kWh"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:flash-outline"
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_LAST_PRINT_ENERGY
+
+    @property
+    def native_value(self) -> float:
+        """Return the last print energy."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("last_print_energy", 0.0), 3)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            attrs[ATTR_TOTAL_ENERGY] = self.coordinator.data.get("total_energy", 0.0)
+            attrs[ATTR_PRINT_COUNT] = self.coordinator.data.get("print_count", 0)
+            if self.coordinator.data.get("last_print_material", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_MATERIAL] = self.coordinator.data.get(
+                    "last_print_material", 0.0
+                )
+            if self.coordinator.data.get("total_material", 0.0) > 0:
+                attrs[ATTR_TOTAL_MATERIAL] = self.coordinator.data.get(
+                    "total_material", 0.0
+                )
+            # Add cost information
+            if self.coordinator.data.get("last_print_total_cost", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                    "last_print_total_cost", 0.0
+                )
+                attrs[ATTR_LAST_PRINT_ENERGY_COST] = self.coordinator.data.get(
+                    "last_print_energy_cost", 0.0
+                )
+                if self.coordinator.data.get("last_print_material_cost", 0.0) > 0:
+                    attrs[ATTR_LAST_PRINT_MATERIAL_COST] = self.coordinator.data.get(
+                        "last_print_material_cost", 0.0
+                    )
+        return attrs
+
+
+class LastPrintMaterialSensor(PrinterEnergySensor):
+    """Sensor for last print material consumption."""
+
+    _attr_name = "Last Print Material"
+    _attr_native_unit_of_measurement = "mm"
+    _attr_icon = "mdi:roll"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_LAST_PRINT_MATERIAL
+
+    @property
+    def native_value(self) -> float:
+        """Return the last print material usage."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("last_print_material", 0.0), 2)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            attrs[ATTR_TOTAL_MATERIAL] = self.coordinator.data.get("total_material", 0.0)
+            attrs[ATTR_LAST_PRINT_ENERGY] = self.coordinator.data.get(
+                "last_print_energy", 0.0
+            )
+            attrs[ATTR_TOTAL_ENERGY] = self.coordinator.data.get("total_energy", 0.0)
+            attrs[ATTR_PRINT_COUNT] = self.coordinator.data.get("print_count", 0)
+            # Add cost information
+            if self.coordinator.data.get("last_print_total_cost", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                    "last_print_total_cost", 0.0
+                )
+                attrs[ATTR_LAST_PRINT_ENERGY_COST] = self.coordinator.data.get(
+                    "last_print_energy_cost", 0.0
+                )
+                if self.coordinator.data.get("last_print_material_cost", 0.0) > 0:
+                    attrs[ATTR_LAST_PRINT_MATERIAL_COST] = self.coordinator.data.get(
+                        "last_print_material_cost", 0.0
+                    )
+        return attrs
+
+
+class LastPrintCostSensor(PrinterEnergySensor):
+    """Sensor for last print total cost."""
+
+    _attr_name = "Last Print Cost"
+    _attr_native_unit_of_measurement = "$"
+    _attr_icon = "mdi:currency-usd"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_LAST_PRINT_COST
+
+    @property
+    def native_value(self) -> float:
+        """Return the last print total cost."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("last_print_total_cost", 0.0), 2)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            if self.coordinator.data.get("last_print_start"):
+                attrs[ATTR_LAST_PRINT_START] = self.coordinator.data["last_print_start"]
+            if self.coordinator.data.get("last_print_end"):
+                attrs[ATTR_LAST_PRINT_END] = self.coordinator.data["last_print_end"]
+            attrs[ATTR_LAST_PRINT_ENERGY_COST] = self.coordinator.data.get(
+                "last_print_energy_cost", 0.0
+            )
+            attrs[ATTR_LAST_PRINT_ENERGY] = self.coordinator.data.get(
+                "last_print_energy", 0.0
+            )
+            if self.coordinator.data.get("last_print_material_cost", 0.0) > 0:
+                attrs[ATTR_LAST_PRINT_MATERIAL_COST] = self.coordinator.data.get(
+                    "last_print_material_cost", 0.0
+                )
+                attrs[ATTR_LAST_PRINT_MATERIAL] = self.coordinator.data.get(
+                    "last_print_material", 0.0
+                )
+            attrs[ATTR_TOTAL_COST] = self.coordinator.data.get("total_cost", 0.0)
+            attrs[ATTR_PRINT_COUNT] = self.coordinator.data.get("print_count", 0)
+        return attrs
+
+
+class TotalCostSensor(PrinterEnergySensor):
+    """Sensor for total cost across all prints."""
+
+    _attr_name = "Total Cost"
+    _attr_native_unit_of_measurement = "$"
+    _attr_icon = "mdi:currency-usd-circle"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    @property
+    def entity_key(self) -> str:
+        """Return the entity key."""
+        return SENSOR_TOTAL_COST
+
+    @property
+    def native_value(self) -> float:
+        """Return the total cost."""
+        if self.coordinator.data:
+            return round(self.coordinator.data.get("total_cost", 0.0), 2)
+        return 0.0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        attrs = {}
+        if self.coordinator.data:
+            attrs[ATTR_PRINT_COUNT] = self.coordinator.data.get("print_count", 0)
+            attrs[ATTR_TOTAL_ENERGY_COST] = self.coordinator.data.get(
+                "total_energy_cost", 0.0
+            )
+            attrs[ATTR_TOTAL_ENERGY] = self.coordinator.data.get("total_energy", 0.0)
+            if self.coordinator.data.get("total_material_cost", 0.0) > 0:
+                attrs[ATTR_TOTAL_MATERIAL_COST] = self.coordinator.data.get(
+                    "total_material_cost", 0.0
+                )
+                attrs[ATTR_TOTAL_MATERIAL] = self.coordinator.data.get(
+                    "total_material", 0.0
+                )
+            attrs[ATTR_LAST_PRINT_TOTAL_COST] = self.coordinator.data.get(
+                "last_print_total_cost", 0.0
+            )
         return attrs

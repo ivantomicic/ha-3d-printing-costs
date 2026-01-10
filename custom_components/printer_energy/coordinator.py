@@ -1,220 +1,402 @@
-"""Data update coordinator for Printer Energy Tracker."""
+"""Data coordinator for Printer Energy integration."""
 
-from typing import Any
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Callable
 
 from homeassistant.core import HomeAssistant, State, callback
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_ENERGY_ATTRIBUTE,
+    CONF_ENERGY_COST_PER_KWH,
     CONF_ENERGY_SENSOR,
-    CONF_PRINTER_STATE_SENSOR,
-    CONF_PRINTING_STATE_VALUE,
+    CONF_MATERIAL_COST_PER_SPOOL,
+    CONF_MATERIAL_SENSOR,
+    CONF_MATERIAL_SPOOL_LENGTH,
+    CONF_PRINTING_SENSOR,
+    CONF_PRINTING_STATE,
+    DEFAULT_ENERGY_COST,
+    DEFAULT_SPOOL_LENGTH,
     DOMAIN,
 )
-from .storage import ActivePrint, PrintRecord, PrintStorage
+from .storage import PrinterEnergyStorage
 
 
-class PrinterEnergyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Coordinate data updates for Printer Energy Tracker."""
+class PrinterEnergyCoordinator(DataUpdateCoordinator):
+    """Coordinate data updates for printer energy tracking."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         config: dict[str, Any],
-        storage: PrintStorage,
     ) -> None:
-        """Initialize coordinator."""
+        """Initialize the coordinator."""
         super().__init__(
             hass,
-            logger=__name__,
+            logger=__import__("logging").getLogger(__name__),
             name=DOMAIN,
-            update_interval=None,  # We use state change listeners instead
+            update_interval=None,  # We update on state changes, not on interval
         )
-        self._config = config
-        self._storage = storage
-        self._energy_entity = config[CONF_ENERGY_SENSOR]
-        self._printer_state_entity = config[CONF_PRINTER_STATE_SENSOR]
-        self._printing_state_value = config.get(
-            CONF_PRINTING_STATE_VALUE, "printing"
-        ).lower()
-        self._previous_printer_state: str | None = None
+        self.hass = hass
+        self.energy_sensor = config[CONF_ENERGY_SENSOR]
+        self.printing_sensor = config[CONF_PRINTING_SENSOR]
+        printing_state_config = config.get(CONF_PRINTING_STATE, "on")
+        # Support comma-separated states or single state
+        if isinstance(printing_state_config, str):
+            self.printing_states = [
+                state.strip().lower()
+                for state in printing_state_config.split(",")
+                if state.strip()
+            ]
+        else:
+            self.printing_states = [str(printing_state_config).lower()]
+        if not self.printing_states:
+            self.printing_states = ["on"]
+        self.energy_attribute = config.get(CONF_ENERGY_ATTRIBUTE, "total_increased")
+        material_sensor_config = config.get(CONF_MATERIAL_SENSOR)
+        self.material_sensor = material_sensor_config.strip() if material_sensor_config and isinstance(material_sensor_config, str) else (material_sensor_config if material_sensor_config else None)
+        self.energy_cost_per_kwh = float(config.get(CONF_ENERGY_COST_PER_KWH, DEFAULT_ENERGY_COST))
+        
+        # Material cost configuration - cost per spool and spool length
+        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
+        self.material_spool_length = float(config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH))
+        # Calculate cost per meter from spool cost and length
+        if self.material_spool_length > 0:
+            self.material_cost_per_meter = self.material_cost_per_spool / self.material_spool_length
+        else:
+            self.material_cost_per_meter = 0.0
+        
+        self.storage = PrinterEnergyStorage(hass)
 
-    async def async_start(self) -> None:
-        """Start the coordinator and set up listeners."""
-        # Load existing data
-        await self._storage.async_load()
+        self.is_printing = False
+        self.session_start_energy = None
+        self.current_session_energy = 0.0
+        self.total_energy = 0.0
+        self.print_count = 0
+        self.last_print_energy = 0.0
+        self.last_print_start = None
+        self.last_print_end = None
 
-        # Handle active print from previous session
-        active_print = self._storage.get_active_print()
-        if active_print:
-            # Check current printer state
-            current_state = self._get_printer_state()
-            if current_state and current_state.lower() == self._printing_state_value:
-                # Print is still active, continue tracking
-                self.logger.info(
-                    "Resuming active print from %s", active_print.start_time
-                )
-            else:
-                # Print ended while HA was down, try to calculate energy if possible
-                await self._handle_print_end(active_print)
+        # Material tracking
+        self.session_start_material = None
+        self.current_session_material = 0.0
+        self.total_material = 0.0
+        self.last_print_material = 0.0
 
-        # Set up state change listener for printer state
-        self.async_on_remove(
-            async_track_state_change_event(
-                self.hass,
-                [self._printer_state_entity],
-                self._async_printer_state_changed,
-            )
-        )
+        # Cost tracking
+        self.last_print_energy_cost = 0.0
+        self.last_print_material_cost = 0.0
+        self.last_print_total_cost = 0.0
+        self.current_session_energy_cost = 0.0
+        self.current_session_material_cost = 0.0
+        self.current_session_total_cost = 0.0
+        self.total_energy_cost = 0.0
+        self.total_material_cost = 0.0
+        self.total_cost = 0.0
 
-        # Initialize data
-        await self.async_request_refresh()
+        self._event_listeners = []
+
+    async def async_config_entry_first_refresh(self) -> None:
+        """Load persisted data on first refresh."""
+        await self._load_persisted_data()
+        await self._update_printing_state()
+        await self.async_refresh()
+
+    async def _load_persisted_data(self) -> None:
+        """Load persisted data from storage."""
+        data = await self.storage.load()
+        self.total_energy = data.get("total_energy", 0.0)
+        self.print_count = data.get("print_count", 0)
+        self.last_print_energy = data.get("last_print_energy", 0.0)
+        self.total_material = data.get("total_material", 0.0)
+        self.last_print_material = data.get("last_print_material", 0.0)
+        
+        # Cost data
+        self.total_energy_cost = data.get("total_energy_cost", 0.0)
+        self.total_material_cost = data.get("total_material_cost", 0.0)
+        self.total_cost = data.get("total_cost", 0.0)
+        self.last_print_energy_cost = data.get("last_print_energy_cost", 0.0)
+        self.last_print_material_cost = data.get("last_print_material_cost", 0.0)
+        self.last_print_total_cost = data.get("last_print_total_cost", 0.0)
+        
+        if data.get("last_print_start"):
+            try:
+                self.last_print_start = dt_util.parse_datetime(data["last_print_start"])
+            except (ValueError, TypeError):
+                self.last_print_start = None
+        
+        if data.get("last_print_end"):
+            try:
+                self.last_print_end = dt_util.parse_datetime(data["last_print_end"])
+            except (ValueError, TypeError):
+                self.last_print_end = None
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Update coordinator data."""
-        # This is called periodically, but we mainly use state change events
-        return {
-            "active_print": self._storage.get_active_print(),
-            "total_energy": self._storage.get_total_energy(),
-            "print_count": self._storage.get_print_count(),
-            "last_print": self._storage.get_last_print(),
-        }
+        """Update data from sensors."""
+        try:
+            energy_state = self.hass.states.get(self.energy_sensor)
+            printing_state = self.hass.states.get(self.printing_sensor)
 
-    @callback
-    def _async_printer_state_changed(self, event: Any) -> None:
-        """Handle printer state changes."""
-        new_state_obj = event.data.get("new_state")
-        old_state_obj = event.data.get("old_state")
+            if energy_state is None or energy_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                raise UpdateFailed(f"Energy sensor {self.energy_sensor} is unavailable")
 
-        if not new_state_obj or not old_state_obj:
-            return
+            if printing_state is None or printing_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                raise UpdateFailed(f"Printing sensor {self.printing_sensor} is unavailable")
+            
+            # Material sensor is optional, so we don't raise if it's unavailable
 
-        new_state = new_state_obj.state
-        old_state = old_state_obj.state
+            # Get current energy value
+            current_energy = self._get_energy_value(energy_state)
 
-        # Ignore unavailable/unknown states
-        if new_state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return
-        if old_state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            old_state = None
+            # Check printing state - check if current state is in list of printing states
+            printing_state_value = printing_state.state.lower()
+            printing = printing_state_value in self.printing_states
 
-        new_state_lower = new_state.lower()
-        old_state_lower = old_state.lower() if old_state else None
+            # Get current material value if material sensor is configured
+            current_material = None
+            if self.material_sensor:
+                material_state = self.hass.states.get(self.material_sensor)
+                if material_state and material_state.state not in (
+                    STATE_UNAVAILABLE,
+                    STATE_UNKNOWN,
+                ):
+                    current_material = self._get_material_value(material_state)
 
-        # Check for print start
-        if (
-            old_state_lower != self._printing_state_value
-            and new_state_lower == self._printing_state_value
-        ):
-            self.hass.async_create_task(self._handle_print_start())
+            # Handle state transitions
+            if printing and not self.is_printing:
+                # Started printing
+                await self._handle_print_start(current_energy, current_material)
+            elif not printing and self.is_printing:
+                # Stopped printing
+                await self._handle_print_stop(current_energy, current_material)
+            elif printing and self.is_printing:
+                # Still printing - update current session energy and material
+                if self.session_start_energy is not None:
+                    self.current_session_energy = current_energy - self.session_start_energy
+                    # Calculate cost for current session energy (convert mm to meters for material)
+                    self.current_session_energy_cost = self.current_session_energy * self.energy_cost_per_kwh
+                else:
+                    self.current_session_energy = 0.0
+                    self.current_session_energy_cost = 0.0
+                
+                if self.material_sensor and current_material is not None:
+                    if self.session_start_material is not None:
+                        self.current_session_material = current_material - self.session_start_material
+                        # Material is in mm, convert to meters for cost calculation
+                        material_meters = self.current_session_material / 1000.0
+                        self.current_session_material_cost = material_meters * self.material_cost_per_meter
+                    else:
+                        self.current_session_material = 0.0
+                        self.current_session_material_cost = 0.0
+                else:
+                    self.current_session_material_cost = 0.0
+                
+                # Calculate total current session cost
+                self.current_session_total_cost = self.current_session_energy_cost + self.current_session_material_cost
 
-        # Check for print end
-        elif (
-            old_state_lower == self._printing_state_value
-            and new_state_lower != self._printing_state_value
-        ):
-            active_print = self._storage.get_active_print()
-            if active_print:
-                self.hass.async_create_task(self._handle_print_end(active_print))
+            return {
+                "is_printing": self.is_printing,
+                "current_energy": current_energy,
+                "current_session_energy": self.current_session_energy,
+                "total_energy": self.total_energy,
+                "print_count": self.print_count,
+                "last_print_energy": self.last_print_energy,
+                "last_print_start": self.last_print_start,
+                "last_print_end": self.last_print_end,
+                "current_session_material": self.current_session_material,
+                "total_material": self.total_material,
+                "last_print_material": self.last_print_material,
+                "current_session_energy_cost": self.current_session_energy_cost,
+                "current_session_material_cost": self.current_session_material_cost,
+                "current_session_total_cost": self.current_session_total_cost,
+                "last_print_energy_cost": self.last_print_energy_cost,
+                "last_print_material_cost": self.last_print_material_cost,
+                "last_print_total_cost": self.last_print_total_cost,
+                "total_energy_cost": self.total_energy_cost,
+                "total_material_cost": self.total_material_cost,
+                "total_cost": self.total_cost,
+            }
 
-        self._previous_printer_state = new_state
+        except Exception as err:
+            raise UpdateFailed(f"Error updating printer energy data: {err}") from err
 
-    async def _handle_print_start(self) -> None:
-        """Handle print start event."""
-        energy_value = self._get_energy_value()
-        if energy_value is None:
-            self.logger.warning(
-                "Cannot start print tracking: energy sensor unavailable"
-            )
-            return
+    def _get_energy_value(self, state: State) -> float:
+        """Extract energy value from state."""
+        if self.energy_attribute and self.energy_attribute in state.attributes:
+            try:
+                return float(state.attributes[self.energy_attribute])
+            except (ValueError, TypeError):
+                pass
 
-        active_print = ActivePrint(
-            start_time=dt_util.now(),
-            start_energy=energy_value,
-        )
-
-        self._storage.set_active_print(active_print)
-        await self._storage.async_save()
-
-        self.logger.info(
-            "Print started at %s (start energy: %.3f kWh)",
-            active_print.start_time,
-            active_print.start_energy,
-        )
-
-        # Notify listeners
-        await self.async_request_refresh()
-
-    async def _handle_print_end(self, active_print: ActivePrint) -> None:
-        """Handle print end event."""
-        energy_value = self._get_energy_value()
-        if energy_value is None:
-            self.logger.warning(
-                "Cannot end print tracking: energy sensor unavailable. "
-                "Print will be discarded."
-            )
-            self._storage.set_active_print(None)
-            await self._storage.async_save()
-            await self.async_request_refresh()
-            return
-
-        # Calculate energy used
-        energy_used = energy_value - active_print.start_energy
-
-        # Handle energy sensor reset or negative delta
-        if energy_used < 0:
-            self.logger.warning(
-                "Negative energy delta detected (%.3f kWh). "
-                "Energy sensor may have been reset. Discarding print.",
-                energy_used,
-            )
-            self._storage.set_active_print(None)
-            await self._storage.async_save()
-            await self.async_request_refresh()
-            return
-
-        # Create print record
-        end_time = dt_util.now()
-        print_record = PrintRecord(
-            start_time=active_print.start_time,
-            end_time=end_time,
-            energy_kwh=energy_used,
-        )
-
-        self._storage.add_print(print_record)
-        self._storage.set_active_print(None)
-        await self._storage.async_save()
-
-        self.logger.info(
-            "Print ended at %s (energy used: %.3f kWh, duration: %s)",
-            end_time,
-            energy_used,
-            end_time - active_print.start_time,
-        )
-
-        # Notify listeners
-        await self.async_request_refresh()
-
-    def _get_energy_value(self) -> float | None:
-        """Get current energy sensor value."""
-        state = self.hass.states.get(self._energy_entity)
-        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return None
-
+        # Fallback to state value
         try:
             return float(state.state)
         except (ValueError, TypeError):
-            self.logger.warning(
-                "Energy sensor '%s' has invalid state: %s", self._energy_entity, state.state
-            )
-            return None
+            return 0.0
 
-    def _get_printer_state(self) -> str | None:
-        """Get current printer state."""
-        state = self.hass.states.get(self._printer_state_entity)
-        if not state or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            return None
-        return state.state
+    def _get_material_value(self, state: State) -> float:
+        """Extract material value from state."""
+        try:
+            return float(state.state)
+        except (ValueError, TypeError):
+            return 0.0
+
+    async def _handle_print_start(self, current_energy: float, current_material: float | None = None) -> None:
+        """Handle when printing starts."""
+        self.is_printing = True
+        self.session_start_energy = current_energy
+        self.current_session_energy = 0.0
+        self.current_session_energy_cost = 0.0
+        self.last_print_start = dt_util.utcnow()
+        
+        if current_material is not None:
+            self.session_start_material = current_material
+            self.current_session_material = 0.0
+            self.current_session_material_cost = 0.0
+        else:
+            self.session_start_material = None
+            self.current_session_material = 0.0
+            self.current_session_material_cost = 0.0
+        
+        self.current_session_total_cost = 0.0
+        
+        material_info = f", Material: {current_material:.2f}" if current_material is not None else ""
+        self.logger.info(f"Printing started. Energy: {current_energy:.2f}{material_info}")
+
+    async def _handle_print_stop(self, current_energy: float, current_material: float | None = None) -> None:
+        """Handle when printing stops."""
+        if self.session_start_energy is not None:
+            session_energy = current_energy - self.session_start_energy
+            if session_energy > 0:
+                self.current_session_energy = session_energy
+                self.total_energy += session_energy
+                self.last_print_energy = session_energy
+                self.print_count += 1
+                self.last_print_end = dt_util.utcnow()
+
+                # Calculate energy cost
+                self.last_print_energy_cost = session_energy * self.energy_cost_per_kwh
+                self.total_energy_cost += self.last_print_energy_cost
+                self.current_session_energy_cost = self.last_print_energy_cost
+
+                # Handle material tracking and cost
+                if current_material is not None and self.session_start_material is not None:
+                    session_material = current_material - self.session_start_material
+                    if session_material > 0:
+                        self.current_session_material = session_material
+                        self.total_material += session_material
+                        self.last_print_material = session_material
+                        
+                        # Calculate material cost (convert mm to meters)
+                        material_meters = session_material / 1000.0
+                        self.last_print_material_cost = material_meters * self.material_cost_per_meter
+                        self.total_material_cost += self.last_print_material_cost
+                        self.current_session_material_cost = self.last_print_material_cost
+                    else:
+                        self.current_session_material = 0.0
+                        self.last_print_material_cost = 0.0
+                        self.current_session_material_cost = 0.0
+                else:
+                    self.current_session_material = 0.0
+                    self.last_print_material_cost = 0.0
+                    self.current_session_material_cost = 0.0
+
+                # Calculate total costs
+                self.last_print_total_cost = self.last_print_energy_cost + self.last_print_material_cost
+                self.total_cost += self.last_print_total_cost
+                self.current_session_total_cost = self.last_print_total_cost
+
+                # Save to storage
+                await self._save_data()
+
+                material_info = (
+                    f", Material: {self.last_print_material:.2f} mm"
+                    if self.last_print_material > 0
+                    else ""
+                )
+                cost_info = f", Cost: ${self.last_print_total_cost:.2f}" if self.last_print_total_cost > 0 else ""
+                self.logger.info(
+                    f"Printing stopped. Session energy: {session_energy:.2f} kWh, "
+                    f"Total: {self.total_energy:.2f} kWh{material_info}{cost_info}"
+                )
+
+        self.is_printing = False
+        self.session_start_energy = None
+        self.session_start_material = None
+
+    async def _save_data(self) -> None:
+        """Save data to persistent storage."""
+        data = {
+            "total_energy": self.total_energy,
+            "print_count": self.print_count,
+            "last_print_energy": self.last_print_energy,
+            "last_print_start": (
+                self.last_print_start.isoformat() if self.last_print_start else None
+            ),
+            "last_print_end": (
+                self.last_print_end.isoformat() if self.last_print_end else None
+            ),
+            "total_material": self.total_material,
+            "last_print_material": self.last_print_material,
+            "total_energy_cost": self.total_energy_cost,
+            "total_material_cost": self.total_material_cost,
+            "total_cost": self.total_cost,
+            "last_print_energy_cost": self.last_print_energy_cost,
+            "last_print_material_cost": self.last_print_material_cost,
+            "last_print_total_cost": self.last_print_total_cost,
+        }
+        await self.storage.save(data)
+
+    async def _update_printing_state(self) -> None:
+        """Update printing state based on current sensor state."""
+        printing_state = self.hass.states.get(self.printing_sensor)
+        if printing_state and printing_state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            printing_state_value = printing_state.state.lower()
+            printing = printing_state_value in self.printing_states
+            if printing != self.is_printing:
+                energy_state = self.hass.states.get(self.energy_sensor)
+                if energy_state and energy_state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                    current_energy = self._get_energy_value(energy_state)
+                    
+                    # Get material value if configured
+                    current_material = None
+                    if self.material_sensor:
+                        material_state = self.hass.states.get(self.material_sensor)
+                        if material_state and material_state.state not in (
+                            STATE_UNAVAILABLE,
+                            STATE_UNKNOWN,
+                        ):
+                            current_material = self._get_material_value(material_state)
+                    
+                    if printing:
+                        await self._handle_print_start(current_energy, current_material)
+                    else:
+                        await self._handle_print_stop(current_energy, current_material)
+
+    @callback
+    def _state_listener(self, event: dict) -> None:
+        """Handle state change events."""
+        entity_id = event.data.get("entity_id")
+        tracked_entities = [self.energy_sensor, self.printing_sensor]
+        if self.material_sensor:
+            tracked_entities.append(self.material_sensor)
+        if entity_id in tracked_entities:
+            self.hass.async_create_task(self.async_refresh())
+
+    @callback
+    def async_setup_listeners(self) -> Callable[[], None]:
+        """Set up state change listeners and return cleanup function."""
+        remove_listener = self.hass.bus.async_listen("state_changed", self._state_listener)
+        self._event_listeners.append(remove_listener)
+        return remove_listener
+
+    async def async_shutdown(self) -> None:
+        """Shutdown coordinator."""
+        # Cancel all event listeners
+        for remove_listener in self._event_listeners:
+            remove_listener()
+        self._event_listeners.clear()

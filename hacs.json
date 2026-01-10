@@ -1,7 +1,7 @@
 {
-  "name": "Printer Energy Tracker",
-  "render_readme": true,
+  "name": "3D Printer Energy Tracker",
+  "hacs": "1.6.0",
   "domains": ["sensor"],
-  "homeassistant": "2023.1.0",
-  "iot_class": "Calculated"
+  "iot_class": "Local Polling",
+  "homeassistant": "2023.1.0"
 }

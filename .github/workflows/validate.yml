@@ -1,0 +1,39 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install HACS validation tools
+        run: |
+          pip install hassfest
+      
+      - name: Validate manifest
+        run: |
+          hassfest custom_components/printer_energy
+      
+      - name: Check for common issues
+        run: |
+          # Check if manifest.json exists
+          test -f custom_components/printer_energy/manifest.json || exit 1
+          # Check if __init__.py exists
+          test -f custom_components/printer_energy/__init__.py || exit 1
+          # Check if hacs.json exists
+          test -f hacs.json || exit 1

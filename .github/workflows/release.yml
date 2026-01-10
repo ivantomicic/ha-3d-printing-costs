@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Create Release Archive
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          mkdir -p release
+          cp -r custom_components release/
+          cd release
+          zip -r ../ha-3d-printing-costs-v${VERSION}.zip custom_components
+          tar -czf ../ha-3d-printing-costs-v${VERSION}.tar.gz custom_components
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ha-3d-printing-costs-v*.zip
+            ha-3d-printing-costs-v*.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

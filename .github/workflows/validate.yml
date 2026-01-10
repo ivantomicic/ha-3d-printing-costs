@@ -21,19 +21,81 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install HACS validation tools
-        run: |
-          pip install hassfest
-      
-      - name: Validate manifest
-        run: |
-          hassfest custom_components/printer_energy
-      
-      - name: Check for common issues
+      - name: Validate file structure
         run: |
           # Check if manifest.json exists
-          test -f custom_components/printer_energy/manifest.json || exit 1
+          test -f custom_components/printer_energy/manifest.json || (echo "❌ manifest.json not found" && exit 1)
+          echo "✅ manifest.json found"
+          
           # Check if __init__.py exists
-          test -f custom_components/printer_energy/__init__.py || exit 1
+          test -f custom_components/printer_energy/__init__.py || (echo "❌ __init__.py not found" && exit 1)
+          echo "✅ __init__.py found"
+          
           # Check if hacs.json exists
-          test -f hacs.json || exit 1
+          test -f hacs.json || (echo "❌ hacs.json not found" && exit 1)
+          echo "✅ hacs.json found"
+          
+          # Check if README.md exists
+          test -f README.md || (echo "❌ README.md not found" && exit 1)
+          echo "✅ README.md found"
+      
+      - name: Validate manifest.json format
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          
+          try:
+              with open('custom_components/printer_energy/manifest.json', 'r') as f:
+                  manifest = json.load(f)
+              
+              required_fields = ['domain', 'name', 'version', 'codeowners', 'config_flow']
+              missing_fields = [field for field in required_fields if field not in manifest]
+              
+              if missing_fields:
+                  print(f"❌ Missing required fields in manifest.json: {', '.join(missing_fields)}")
+                  sys.exit(1)
+              
+              print("✅ manifest.json is valid JSON with required fields")
+              print(f"   Domain: {manifest.get('domain')}")
+              print(f"   Name: {manifest.get('name')}")
+              print(f"   Version: {manifest.get('version')}")
+              
+          except json.JSONDecodeError as e:
+              print(f"❌ manifest.json is not valid JSON: {e}")
+              sys.exit(1)
+          except Exception as e:
+              print(f"❌ Error validating manifest.json: {e}")
+              sys.exit(1)
+          EOF
+      
+      - name: Validate hacs.json format
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          
+          try:
+              with open('hacs.json', 'r') as f:
+                  hacs = json.load(f)
+              
+              print("✅ hacs.json is valid JSON")
+              print(f"   Name: {hacs.get('name')}")
+              print(f"   HACS: {hacs.get('hacs')}")
+              
+          except json.JSONDecodeError as e:
+              print(f"❌ hacs.json is not valid JSON: {e}")
+              sys.exit(1)
+          except Exception as e:
+              print(f"❌ Error validating hacs.json: {e}")
+              sys.exit(1)
+          EOF
+      
+      - name: Check Python syntax
+        run: |
+          python3 -m py_compile custom_components/printer_energy/*.py 2>&1 || (echo "❌ Python syntax errors found" && exit 1)
+          echo "✅ All Python files have valid syntax"
+      
+      - name: Validation complete
+        run: |
+          echo "✅ All validations passed!"

@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     CONF_MATERIAL_COST_PER_SPOOL,
     CONF_MATERIAL_SPOOL_LENGTH,
+    DEFAULT_MATERIAL_COST_PER_SPOOL,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
 )
@@ -91,7 +92,7 @@ class PrinterEnergyNumber(CoordinatorEntity, NumberEntity):
 
         key = self.entity_description.key
         if key == CONF_MATERIAL_COST_PER_SPOOL:
-            return float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
+            return float(config.get(CONF_MATERIAL_COST_PER_SPOOL, DEFAULT_MATERIAL_COST_PER_SPOOL))
         elif key == CONF_MATERIAL_SPOOL_LENGTH:
             # Ensure integer value (no decimals) for spool length
             raw_value = config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH)

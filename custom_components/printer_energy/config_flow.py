@@ -10,7 +10,6 @@ from homeassistant.const import CONF_NAME
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_ENERGY_ATTRIBUTE,
     CONF_ENERGY_COST_SENSOR,
     CONF_ENERGY_SENSOR,
     CONF_MATERIAL_COST_PER_SPOOL,
@@ -18,7 +17,7 @@ from .const import (
     CONF_MATERIAL_SPOOL_LENGTH,
     CONF_PRINTING_SENSOR,
     CONF_PRINTING_STATE,
-    DEFAULT_ENERGY_ATTRIBUTE,
+    DEFAULT_MATERIAL_COST_PER_SPOOL,
     DEFAULT_PRINTING_STATE,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
@@ -83,9 +82,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         multiple=False,
                     )
                 ),
-                vol.Optional(
-                    CONF_ENERGY_ATTRIBUTE, default=DEFAULT_ENERGY_ATTRIBUTE
-                ): str,
                 vol.Required(CONF_PRINTING_SENSOR): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["binary_sensor", "sensor"],
@@ -109,7 +105,7 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 vol.Optional(
                     CONF_MATERIAL_COST_PER_SPOOL,
-                    default=0.0,
+                    default=DEFAULT_MATERIAL_COST_PER_SPOOL,
                 ): vol.Coerce(float),
                 vol.Optional(
                     CONF_MATERIAL_SPOOL_LENGTH,
@@ -141,15 +137,6 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Optional(
-                    CONF_ENERGY_ATTRIBUTE,
-                    default=self.config_entry.options.get(
-                        CONF_ENERGY_ATTRIBUTE,
-                        self.config_entry.data.get(
-                            CONF_ENERGY_ATTRIBUTE, DEFAULT_ENERGY_ATTRIBUTE
-                        ),
-                    ),
-                ): str,
                 vol.Optional(
                     CONF_PRINTING_STATE,
                     default=self.config_entry.options.get(
@@ -187,7 +174,7 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_MATERIAL_COST_PER_SPOOL,
                     default=self.config_entry.options.get(
                         CONF_MATERIAL_COST_PER_SPOOL,
-                        self.config_entry.data.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0),
+                        self.config_entry.data.get(CONF_MATERIAL_COST_PER_SPOOL, DEFAULT_MATERIAL_COST_PER_SPOOL),
                     ),
                 ): vol.Coerce(float),
                 vol.Optional(

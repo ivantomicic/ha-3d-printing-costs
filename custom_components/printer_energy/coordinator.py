@@ -11,7 +11,6 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_ENERGY_ATTRIBUTE,
     CONF_ENERGY_COST_SENSOR,
     CONF_ENERGY_SENSOR,
     CONF_MATERIAL_COST_PER_SPOOL,
@@ -19,8 +18,10 @@ from .const import (
     CONF_MATERIAL_SPOOL_LENGTH,
     CONF_PRINTING_SENSOR,
     CONF_PRINTING_STATE,
+    DEFAULT_MATERIAL_COST_PER_SPOOL,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
+    ENERGY_ATTRIBUTE,
     STORAGE_KEY,
     STORAGE_VERSION,
 )
@@ -59,7 +60,7 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
             self.printing_states = [str(printing_state_config).lower()]
         if not self.printing_states:
             self.printing_states = ["on"]
-        self.energy_attribute = config.get(CONF_ENERGY_ATTRIBUTE, "total_increased")
+        # Energy attribute is always "total_increased" (hardcoded, not stored as instance variable)
         material_sensor_config = config.get(CONF_MATERIAL_SENSOR)
         self.material_sensor = material_sensor_config.strip() if material_sensor_config and isinstance(material_sensor_config, str) else (material_sensor_config if material_sensor_config else None)
         
@@ -108,7 +109,7 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         self.energy_cost_sensor = energy_cost_sensor_config.strip() if energy_cost_sensor_config and isinstance(energy_cost_sensor_config, str) else (energy_cost_sensor_config if energy_cost_sensor_config else None)
         
         # Material cost configuration - cost per spool and spool length
-        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
+        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, DEFAULT_MATERIAL_COST_PER_SPOOL))
         # Spool length must be integer (no decimals)
         spool_length_raw = config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH)
         self.material_spool_length = float(int(spool_length_raw))
@@ -287,9 +288,10 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
 
     def _get_energy_value(self, state: State) -> float:
         """Extract energy value from state."""
-        if self.energy_attribute and self.energy_attribute in state.attributes:
+        # Always use "total_increased" attribute (hardcoded)
+        if ENERGY_ATTRIBUTE in state.attributes:
             try:
-                return float(state.attributes[self.energy_attribute])
+                return float(state.attributes[ENERGY_ATTRIBUTE])
             except (ValueError, TypeError):
                 pass
 

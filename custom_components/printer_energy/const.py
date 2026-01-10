@@ -7,16 +7,17 @@ STORAGE_VERSION = 1
 CONF_ENERGY_SENSOR = "energy_sensor"
 CONF_PRINTING_SENSOR = "printing_sensor"
 CONF_PRINTING_STATE = "printing_state"
-CONF_ENERGY_ATTRIBUTE = "energy_attribute"
 CONF_MATERIAL_SENSOR = "material_sensor"
 CONF_ENERGY_COST_SENSOR = "energy_cost_sensor"
 CONF_MATERIAL_COST_PER_SPOOL = "material_cost_per_spool"
 CONF_MATERIAL_SPOOL_LENGTH = "material_spool_length"
 
 DEFAULT_PRINTING_STATE = "on,printing,self-check"
-DEFAULT_ENERGY_ATTRIBUTE = "total_increased"
-DEFAULT_MATERIAL_COST_PER_SPOOL = 0.0  # No default, user must configure
+DEFAULT_MATERIAL_COST_PER_SPOOL = 2600.0  # Default material cost per spool
 DEFAULT_SPOOL_LENGTH = 330.0  # 330 meters per spool (common default)
+
+# Hardcoded energy attribute - always use "total_increased"
+ENERGY_ATTRIBUTE = "total_increased"
 
 ATTR_CURRENT_SESSION_ENERGY = "current_session_energy"
 ATTR_TOTAL_ENERGY = "total_energy"

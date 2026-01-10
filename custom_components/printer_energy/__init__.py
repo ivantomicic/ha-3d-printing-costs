@@ -18,7 +18,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the Printer Energy Tracker integration."""
     # Integration setup - just return True for config flow integrations
     # The actual setup happens in async_setup_entry
-    _LOGGER.debug("Printer Energy Tracker integration setting up")
+    _LOGGER.info("Printer Energy Tracker integration loaded")
     return True
 
 

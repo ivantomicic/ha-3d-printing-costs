@@ -103,7 +103,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selector.EntitySelectorConfig(
                 domain=SENSOR_DOMAIN,
                 device_class="energy",
-                unit_of_measurement="kWh",
             )
         )
 
@@ -186,7 +185,6 @@ class PrinterEnergyOptionsFlow(config_entries.OptionsFlow):
             selector.EntitySelectorConfig(
                 domain=SENSOR_DOMAIN,
                 device_class="energy",
-                unit_of_measurement="kWh",
             )
         )
 

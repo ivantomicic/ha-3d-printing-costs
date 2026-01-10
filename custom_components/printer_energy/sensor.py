@@ -18,11 +18,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    ATTR_CURRENT_SESSION_ENERGY,
-    ATTR_CURRENT_SESSION_ENERGY_COST,
-    ATTR_CURRENT_SESSION_MATERIAL,
-    ATTR_CURRENT_SESSION_MATERIAL_COST,
-    ATTR_CURRENT_SESSION_TOTAL_COST,
     ATTR_LAST_PRINT_ENERGY,
     ATTR_LAST_PRINT_ENERGY_COST,
     ATTR_LAST_PRINT_END,
@@ -37,7 +32,6 @@ from .const import (
     ATTR_TOTAL_MATERIAL,
     ATTR_TOTAL_MATERIAL_COST,
     DOMAIN,
-    SENSOR_CURRENT_SESSION,
     SENSOR_LAST_PRINT_COST,
     SENSOR_LAST_PRINT_ENERGY,
     SENSOR_LAST_PRINT_MATERIAL,
@@ -58,7 +52,6 @@ async def async_setup_entry(
 
     entities = [
         TotalEnergySensor(coordinator, config_entry),
-        CurrentSessionEnergySensor(coordinator, config_entry),
         PrintCountSensor(coordinator, config_entry),
         LastPrintEnergySensor(coordinator, config_entry),
         LastPrintCostSensor(coordinator, config_entry),
@@ -158,53 +151,6 @@ class TotalEnergySensor(PrinterEnergySensor):
                 attrs[ATTR_TOTAL_MATERIAL_COST] = self.coordinator.data.get(
                     "total_material_cost", 0.0
                 )
-        return attrs
-
-
-class CurrentSessionEnergySensor(PrinterEnergySensor):
-    """Sensor for current print session energy."""
-
-    _attr_name = "Current Session Energy"
-    _attr_native_unit_of_measurement = "kWh"
-    _attr_device_class = SensorDeviceClass.ENERGY
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = "mdi:gauge"
-
-    @property
-    def entity_key(self) -> str:
-        """Return the entity key."""
-        return SENSOR_CURRENT_SESSION
-
-    @property
-    def native_value(self) -> float:
-        """Return the current session energy."""
-        if self.coordinator.data:
-            return round(self.coordinator.data.get("current_session_energy", 0.0), 3)
-        return 0.0
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return extra state attributes."""
-        attrs = {}
-        if self.coordinator.data:
-            attrs["is_printing"] = self.coordinator.data.get("is_printing", False)
-            attrs["current_energy"] = self.coordinator.data.get("current_energy", 0.0)
-            if self.coordinator.data.get("current_session_material", 0.0) > 0:
-                attrs[ATTR_CURRENT_SESSION_MATERIAL] = self.coordinator.data.get(
-                    "current_session_material", 0.0
-                )
-            # Add cost information
-            if self.coordinator.data.get("current_session_total_cost", 0.0) > 0:
-                attrs[ATTR_CURRENT_SESSION_TOTAL_COST] = self.coordinator.data.get(
-                    "current_session_total_cost", 0.0
-                )
-                attrs[ATTR_CURRENT_SESSION_ENERGY_COST] = self.coordinator.data.get(
-                    "current_session_energy_cost", 0.0
-                )
-                if self.coordinator.data.get("current_session_material_cost", 0.0) > 0:
-                    attrs[ATTR_CURRENT_SESSION_MATERIAL_COST] = self.coordinator.data.get(
-                        "current_session_material_cost", 0.0
-                    )
         return attrs
 
 

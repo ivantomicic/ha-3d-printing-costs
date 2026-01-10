@@ -300,7 +300,7 @@ class LastPrintEnergyCostSensor(PrinterEnergySensor):
     """Sensor for last print energy cost."""
 
     _attr_name = "Last Print Energy Cost"
-    _attr_icon = "mdi:flash-circle"
+    _attr_icon = "mdi:currency-usd"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property

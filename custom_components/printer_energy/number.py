@@ -44,7 +44,7 @@ NUMBER_ENTITIES = (
     NumberEntityDescription(
         key=CONF_MATERIAL_SPOOL_LENGTH,
         name="Spool Length",
-        icon="mdi:format-length",
+        icon="mdi:meter-electric-outline",
         native_min_value=1,
         native_max_value=500,
         native_step=1,

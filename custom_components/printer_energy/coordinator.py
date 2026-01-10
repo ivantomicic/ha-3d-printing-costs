@@ -11,6 +11,7 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_CURRENCY,
     CONF_ENERGY_ATTRIBUTE,
     CONF_ENERGY_COST_PER_KWH,
     CONF_ENERGY_SENSOR,
@@ -19,6 +20,7 @@ from .const import (
     CONF_MATERIAL_SPOOL_LENGTH,
     CONF_PRINTING_SENSOR,
     CONF_PRINTING_STATE,
+    DEFAULT_CURRENCY,
     DEFAULT_ENERGY_COST,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
@@ -59,18 +61,11 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         self.energy_attribute = config.get(CONF_ENERGY_ATTRIBUTE, "total_increased")
         material_sensor_config = config.get(CONF_MATERIAL_SENSOR)
         self.material_sensor = material_sensor_config.strip() if material_sensor_config and isinstance(material_sensor_config, str) else (material_sensor_config if material_sensor_config else None)
-        self.energy_cost_per_kwh = float(config.get(CONF_ENERGY_COST_PER_KWH, DEFAULT_ENERGY_COST))
-        
-        # Material cost configuration - cost per spool and spool length
-        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
-        self.material_spool_length = float(config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH))
-        # Calculate cost per meter from spool cost and length
-        if self.material_spool_length > 0:
-            self.material_cost_per_meter = self.material_cost_per_spool / self.material_spool_length
-        else:
-            self.material_cost_per_meter = 0.0
         
         self.storage = PrinterEnergyStorage(hass)
+        
+        # Update cost configuration
+        self._update_cost_config(config)
 
         self.is_printing = False
         self.session_start_energy = None
@@ -99,6 +94,20 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         self.total_cost = 0.0
 
         self._event_listeners = []
+
+    def _update_cost_config(self, config: dict[str, Any]) -> None:
+        """Update cost configuration from config."""
+        self.energy_cost_per_kwh = float(config.get(CONF_ENERGY_COST_PER_KWH, DEFAULT_ENERGY_COST))
+        self.currency = config.get(CONF_CURRENCY, DEFAULT_CURRENCY)
+        
+        # Material cost configuration - cost per spool and spool length
+        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
+        self.material_spool_length = float(config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH))
+        # Calculate cost per meter from spool cost and length
+        if self.material_spool_length > 0:
+            self.material_cost_per_meter = self.material_cost_per_spool / self.material_spool_length
+        else:
+            self.material_cost_per_meter = 0.0
 
     async def async_config_entry_first_refresh(self) -> None:
         """Load persisted data on first refresh."""
@@ -219,6 +228,7 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
                 "total_energy_cost": self.total_energy_cost,
                 "total_material_cost": self.total_material_cost,
                 "total_cost": self.total_cost,
+                "currency": self.currency,
             }
 
         except Exception as err:
@@ -393,6 +403,35 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         remove_listener = self.hass.bus.async_listen("state_changed", self._state_listener)
         self._event_listeners.append(remove_listener)
         return remove_listener
+
+    async def async_reset_data(self) -> None:
+        """Reset all accumulated data."""
+        self.total_energy = 0.0
+        self.total_material = 0.0
+        self.print_count = 0
+        self.last_print_energy = 0.0
+        self.last_print_material = 0.0
+        self.last_print_start = None
+        self.last_print_end = None
+        self.total_energy_cost = 0.0
+        self.total_material_cost = 0.0
+        self.total_cost = 0.0
+        self.last_print_energy_cost = 0.0
+        self.last_print_material_cost = 0.0
+        self.last_print_total_cost = 0.0
+        self.current_session_energy = 0.0
+        self.current_session_material = 0.0
+        self.current_session_energy_cost = 0.0
+        self.current_session_material_cost = 0.0
+        self.current_session_total_cost = 0.0
+        
+        # Save reset state to storage
+        await self._save_data()
+        
+        # Refresh to update sensors
+        await self.async_refresh()
+        
+        self.logger.info("All data has been reset")
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator."""

@@ -356,7 +356,6 @@ class LastPrintCostSensor(PrinterEnergySensor):
     """Sensor for last print total cost."""
 
     _attr_name = "Last Print Cost"
-    _attr_native_unit_of_measurement = "$"
     _attr_icon = "mdi:currency-usd"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -364,6 +363,13 @@ class LastPrintCostSensor(PrinterEnergySensor):
     def entity_key(self) -> str:
         """Return the entity key."""
         return SENSOR_LAST_PRINT_COST
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency unit."""
+        if self.coordinator.data and self.coordinator.data.get("currency"):
+            return self.coordinator.data.get("currency")
+        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
 
     @property
     def native_value(self) -> float:
@@ -403,7 +409,6 @@ class TotalCostSensor(PrinterEnergySensor):
     """Sensor for total cost across all prints."""
 
     _attr_name = "Total Cost"
-    _attr_native_unit_of_measurement = "$"
     _attr_icon = "mdi:currency-usd-circle"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
@@ -411,6 +416,13 @@ class TotalCostSensor(PrinterEnergySensor):
     def entity_key(self) -> str:
         """Return the entity key."""
         return SENSOR_TOTAL_COST
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency unit."""
+        if self.coordinator.data and self.coordinator.data.get("currency"):
+            return self.coordinator.data.get("currency")
+        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
 
     @property
     def native_value(self) -> float:

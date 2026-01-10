@@ -10,7 +10,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_CURRENCY_SENSOR, CONF_ENERGY_COST_SENSOR, DOMAIN
+from .const import CONF_ENERGY_COST_SENSOR, DOMAIN
 from .coordinator import PrinterEnergyCoordinator
 
 
@@ -18,13 +18,6 @@ TEXT_ENTITIES = (
     TextEntityDescription(
         key=CONF_ENERGY_COST_SENSOR,
         name="Energy Cost Sensor",
-        icon="mdi:currency-usd",
-        native_min=0,
-        native_max=255,  # Max length for entity ID
-    ),
-    TextEntityDescription(
-        key=CONF_CURRENCY_SENSOR,
-        name="Currency Sensor",
         icon="mdi:currency-usd",
         native_min=0,
         native_max=255,  # Max length for entity ID

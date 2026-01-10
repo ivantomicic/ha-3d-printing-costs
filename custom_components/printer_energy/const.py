@@ -10,7 +10,6 @@ CONF_PRINTING_STATE = "printing_state"
 CONF_ENERGY_ATTRIBUTE = "energy_attribute"
 CONF_MATERIAL_SENSOR = "material_sensor"
 CONF_ENERGY_COST_SENSOR = "energy_cost_sensor"
-CONF_CURRENCY_SENSOR = "currency_sensor"
 CONF_MATERIAL_COST_PER_SPOOL = "material_cost_per_spool"
 CONF_MATERIAL_SPOOL_LENGTH = "material_spool_length"
 

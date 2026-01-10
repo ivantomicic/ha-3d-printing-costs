@@ -309,11 +309,9 @@ class LastPrintEnergyCostSensor(PrinterEnergySensor):
         return "last_print_energy_cost"
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the currency unit."""
-        if self.coordinator.data and self.coordinator.data.get("currency"):
-            return self.coordinator.data.get("currency")
-        return self.coordinator._get_currency()
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement."""
+        return None  # Cost values don't need a currency unit - format in templates if needed
 
     @property
     def native_value(self) -> float:
@@ -360,11 +358,9 @@ class LastPrintMaterialCostSensor(PrinterEnergySensor):
         return "last_print_material_cost"
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the currency unit."""
-        if self.coordinator.data and self.coordinator.data.get("currency"):
-            return self.coordinator.data.get("currency")
-        return self.coordinator._get_currency()
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement."""
+        return None  # Cost values don't need a currency unit - format in templates if needed
 
     @property
     def native_value(self) -> float:
@@ -411,11 +407,9 @@ class LastPrintTotalCostSensor(PrinterEnergySensor):
         return "last_print_total_cost"
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the currency unit."""
-        if self.coordinator.data and self.coordinator.data.get("currency"):
-            return self.coordinator.data.get("currency")
-        return self.coordinator._get_currency()
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement."""
+        return None  # Cost values don't need a currency unit - format in templates if needed
 
     @property
     def native_value(self) -> float:
@@ -464,11 +458,9 @@ class TotalCostSensor(PrinterEnergySensor):
         return "total_cost"
 
     @property
-    def native_unit_of_measurement(self) -> str:
-        """Return the currency unit."""
-        if self.coordinator.data and self.coordinator.data.get("currency"):
-            return self.coordinator.data.get("currency")
-        return self.coordinator._get_currency()
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement."""
+        return None  # Cost values don't need a currency unit - format in templates if needed
 
     @property
     def native_value(self) -> float:

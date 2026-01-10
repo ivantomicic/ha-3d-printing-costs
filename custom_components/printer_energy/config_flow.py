@@ -10,7 +10,6 @@ from homeassistant.const import CONF_NAME
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_CURRENCY_SENSOR,
     CONF_ENERGY_ATTRIBUTE,
     CONF_ENERGY_COST_SENSOR,
     CONF_ENERGY_SENSOR,
@@ -42,7 +41,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             material_sensor = user_input.get(CONF_MATERIAL_SENSOR)
 
             energy_cost_sensor = user_input.get(CONF_ENERGY_COST_SENSOR)
-            currency_sensor = user_input.get(CONF_CURRENCY_SENSOR)
 
             if self.hass.states.get(energy_sensor) is None:
                 errors[CONF_ENERGY_SENSOR] = "entity_not_found"
@@ -52,8 +50,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_MATERIAL_SENSOR] = "entity_not_found"
             elif energy_cost_sensor and energy_cost_sensor.strip() and self.hass.states.get(energy_cost_sensor) is None:
                 errors[CONF_ENERGY_COST_SENSOR] = "entity_not_found"
-            elif currency_sensor and currency_sensor.strip() and self.hass.states.get(currency_sensor) is None:
-                errors[CONF_CURRENCY_SENSOR] = "entity_not_found"
             else:
                 # Clean up sensor values - remove if empty
                 if material_sensor and not material_sensor.strip():
@@ -65,11 +61,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_ENERGY_COST_SENSOR] = None
                 elif energy_cost_sensor:
                     user_input[CONF_ENERGY_COST_SENSOR] = energy_cost_sensor.strip()
-                
-                if currency_sensor and not currency_sensor.strip():
-                    user_input[CONF_CURRENCY_SENSOR] = None
-                elif currency_sensor:
-                    user_input[CONF_CURRENCY_SENSOR] = currency_sensor.strip()
                 
                 # Check for duplicate entries
                 unique_id_parts = [energy_sensor, printing_sensor]
@@ -111,12 +102,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 ),
                 vol.Optional(CONF_ENERGY_COST_SENSOR): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=["sensor", "number"],
-                        multiple=False,
-                    )
-                ),
-                vol.Optional(CONF_CURRENCY_SENSOR): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["sensor", "number"],
                         multiple=False,
@@ -191,18 +176,6 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
                     default=self.config_entry.options.get(
                         CONF_ENERGY_COST_SENSOR,
                         self.config_entry.data.get(CONF_ENERGY_COST_SENSOR, ""),
-                    ),
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=["sensor", "number"],
-                        multiple=False,
-                    )
-                ),
-                vol.Optional(
-                    CONF_CURRENCY_SENSOR,
-                    default=self.config_entry.options.get(
-                        CONF_CURRENCY_SENSOR,
-                        self.config_entry.data.get(CONF_CURRENCY_SENSOR, ""),
                     ),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(

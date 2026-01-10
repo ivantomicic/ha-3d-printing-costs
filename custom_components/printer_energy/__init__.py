@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Check if coordinator already exists (on reload)
     existing_coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if existing_coordinator and isinstance(existing_coordinator, PrinterEnergyCoordinator):
-        # Update cost config if currency/cost settings changed
+        # Update cost config if energy cost settings changed
         existing_coordinator._update_cost_config(config)
         coordinator = existing_coordinator
     else:
@@ -54,10 +54,8 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     """Migrate old entry."""
     version = config_entry.version
     
-    # Migration from version 1 to 2: Add currency if missing (deprecated - kept for compatibility)
+    # Migration from version 1 to 2: Deprecated - just bump version
     if version == 1:
-        # Skip this migration since currency is now handled via entity selector
-        # Just bump version to 2
         hass.config_entries.async_update_entry(config_entry, version=2)
         version = 2
     
@@ -80,12 +78,12 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         hass.config_entries.async_update_entry(config_entry, version=3)
         version = 3
     
-    # Migration from version 3 to 4: Convert energy cost and currency to entity selectors
+    # Migration from version 3 to 4: Convert energy cost to entity selector
     if version == 3:
         # Old config uses CONF_ENERGY_COST_PER_KWH and CONF_CURRENCY
-        # New config uses CONF_ENERGY_COST_SENSOR and CONF_CURRENCY_SENSOR
+        # New config uses CONF_ENERGY_COST_SENSOR only (currency removed)
         # Remove old fields from data, they won't be used anymore
-        # Users will need to configure entity sensors/numbers via options flow
+        # Users will need to configure entity sensor/number via options flow
         new_data = {**config_entry.data}
         # Remove old fields that are no longer used
         new_data.pop("energy_cost_per_kwh", None)

@@ -11,7 +11,6 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_CURRENCY_SENSOR,
     CONF_ENERGY_ATTRIBUTE,
     CONF_ENERGY_COST_SENSOR,
     CONF_ENERGY_SENSOR,
@@ -64,12 +63,9 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         material_sensor_config = config.get(CONF_MATERIAL_SENSOR)
         self.material_sensor = material_sensor_config.strip() if material_sensor_config and isinstance(material_sensor_config, str) else (material_sensor_config if material_sensor_config else None)
         
-        # Energy cost and currency sensors
+        # Energy cost sensor
         energy_cost_sensor_config = config.get(CONF_ENERGY_COST_SENSOR)
         self.energy_cost_sensor = energy_cost_sensor_config.strip() if energy_cost_sensor_config and isinstance(energy_cost_sensor_config, str) else (energy_cost_sensor_config if energy_cost_sensor_config else None)
-        
-        currency_sensor_config = config.get(CONF_CURRENCY_SENSOR)
-        self.currency_sensor = currency_sensor_config.strip() if currency_sensor_config and isinstance(currency_sensor_config, str) else (currency_sensor_config if currency_sensor_config else None)
         
         # Create entry-specific storage to prevent data sharing between instances
         self.storage = PrinterEnergyStorage(hass, entry_id)
@@ -111,9 +107,6 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         energy_cost_sensor_config = config.get(CONF_ENERGY_COST_SENSOR)
         self.energy_cost_sensor = energy_cost_sensor_config.strip() if energy_cost_sensor_config and isinstance(energy_cost_sensor_config, str) else (energy_cost_sensor_config if energy_cost_sensor_config else None)
         
-        currency_sensor_config = config.get(CONF_CURRENCY_SENSOR)
-        self.currency_sensor = currency_sensor_config.strip() if currency_sensor_config and isinstance(currency_sensor_config, str) else (currency_sensor_config if currency_sensor_config else None)
-        
         # Material cost configuration - cost per spool and spool length
         self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
         # Spool length must be integer (no decimals)
@@ -139,19 +132,6 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         except (ValueError, TypeError):
             self.logger.warning(f"Could not parse energy cost from {self.energy_cost_sensor}: {state.state}")
             return 0.0
-
-    def _get_currency(self) -> str:
-        """Get currency from selected sensor/number entity."""
-        if not self.currency_sensor:
-            return "RSD"  # Default currency
-        
-        state = self.hass.states.get(self.currency_sensor)
-        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, None):
-            return "RSD"
-        
-        # Currency should be a string (e.g., "USD", "EUR", "RSD")
-        currency = str(state.state).strip().upper()
-        return currency if currency else "RSD"
 
     async def async_config_entry_first_refresh(self) -> None:
         """Load persisted data on first refresh."""
@@ -300,7 +280,6 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
                 "total_energy_cost": self.total_energy_cost,
                 "total_material_cost": self.total_material_cost,
                 "total_cost": self.total_cost,
-                "currency": self._get_currency(),
             }
 
         except Exception as err:

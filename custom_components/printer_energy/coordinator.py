@@ -107,7 +107,9 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         
         # Material cost configuration - cost per spool and spool length
         self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
-        self.material_spool_length = float(config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH))
+        # Spool length must be integer (no decimals)
+        spool_length_raw = config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH)
+        self.material_spool_length = float(int(spool_length_raw))
         # Calculate cost per meter from spool cost and length
         if self.material_spool_length > 0:
             self.material_cost_per_meter = self.material_cost_per_spool / self.material_spool_length

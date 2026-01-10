@@ -17,8 +17,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .helpers import slugify_device_name
-
 from .const import (
     ATTR_LAST_PRINT_ENERGY,
     ATTR_LAST_PRINT_ENERGY_COST,
@@ -75,10 +73,8 @@ class PrinterEnergySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.config_entry = config_entry
-        # Get device name and slugify it for entity ID
         device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker")
-        device_slug = slugify_device_name(device_name)
-        self._attr_unique_id = f"{device_slug}_{self.entity_key}"
+        self._attr_unique_id = f"{config_entry.entry_id}_{self.entity_key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
             "name": device_name,

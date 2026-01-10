@@ -21,7 +21,6 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import PrinterEnergyCoordinator
-from .helpers import slugify_device_name
 
 
 NUMBER_ENTITIES = (
@@ -46,9 +45,9 @@ NUMBER_ENTITIES = (
         key=CONF_MATERIAL_SPOOL_LENGTH,
         name="Spool Length",
         icon="mdi:format-length",
-        native_min_value=1.0,
-        native_max_value=500.0,
-        native_step=1.0,
+        native_min_value=1,
+        native_max_value=500,
+        native_step=1,
         native_unit_of_measurement="m",
     ),
 )
@@ -86,10 +85,8 @@ class PrinterEnergyNumber(CoordinatorEntity, NumberEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self.config_entry = config_entry
-        # Get device name and slugify it for entity ID
         device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker")
-        device_slug = slugify_device_name(device_name)
-        self._attr_unique_id = f"{device_slug}_{description.key}"
+        self._attr_unique_id = f"{config_entry.entry_id}_{description.key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
             "name": device_name,
@@ -110,14 +107,22 @@ class PrinterEnergyNumber(CoordinatorEntity, NumberEntity):
         elif key == CONF_MATERIAL_COST_PER_SPOOL:
             return float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
         elif key == CONF_MATERIAL_SPOOL_LENGTH:
-            return float(config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH))
+            # Ensure integer value (no decimals) for spool length
+            raw_value = config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH)
+            return float(int(raw_value))
         return 0.0
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the value."""
+        key = self.entity_description.key
+        
+        # For spool length, ensure integer value (no decimals)
+        if key == CONF_MATERIAL_SPOOL_LENGTH:
+            value = int(round(value))
+        
         # Update config entry options
         new_options = {**self.config_entry.options}
-        new_options[self.entity_description.key] = value
+        new_options[key] = value
 
         # Update config entry
         self.hass.config_entries.async_update_entry(

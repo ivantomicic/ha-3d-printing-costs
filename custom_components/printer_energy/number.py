@@ -11,12 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    CONF_CURRENCY,
-    CONF_ENERGY_COST_PER_KWH,
     CONF_MATERIAL_COST_PER_SPOOL,
     CONF_MATERIAL_SPOOL_LENGTH,
-    DEFAULT_CURRENCY,
-    DEFAULT_ENERGY_COST,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
 )
@@ -24,14 +20,6 @@ from .coordinator import PrinterEnergyCoordinator
 
 
 NUMBER_ENTITIES = (
-    NumberEntityDescription(
-        key=CONF_ENERGY_COST_PER_KWH,
-        name="Energy Cost per kWh",
-        icon="mdi:currency-usd",
-        native_min_value=0.0,
-        native_step=0.1,
-        native_unit_of_measurement="RSD/kWh",
-    ),
     NumberEntityDescription(
         key=CONF_MATERIAL_COST_PER_SPOOL,
         name="Material Cost per Spool",
@@ -102,9 +90,7 @@ class PrinterEnergyNumber(CoordinatorEntity, NumberEntity):
             config.update(self.config_entry.options)
 
         key = self.entity_description.key
-        if key == CONF_ENERGY_COST_PER_KWH:
-            return float(config.get(CONF_ENERGY_COST_PER_KWH, DEFAULT_ENERGY_COST))
-        elif key == CONF_MATERIAL_COST_PER_SPOOL:
+        if key == CONF_MATERIAL_COST_PER_SPOOL:
             return float(config.get(CONF_MATERIAL_COST_PER_SPOOL, 0.0))
         elif key == CONF_MATERIAL_SPOOL_LENGTH:
             # Ensure integer value (no decimals) for spool length

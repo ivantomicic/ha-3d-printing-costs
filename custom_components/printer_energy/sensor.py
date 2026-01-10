@@ -313,7 +313,7 @@ class LastPrintEnergyCostSensor(PrinterEnergySensor):
         """Return the currency unit."""
         if self.coordinator.data and self.coordinator.data.get("currency"):
             return self.coordinator.data.get("currency")
-        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -364,7 +364,7 @@ class LastPrintMaterialCostSensor(PrinterEnergySensor):
         """Return the currency unit."""
         if self.coordinator.data and self.coordinator.data.get("currency"):
             return self.coordinator.data.get("currency")
-        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -415,7 +415,7 @@ class LastPrintTotalCostSensor(PrinterEnergySensor):
         """Return the currency unit."""
         if self.coordinator.data and self.coordinator.data.get("currency"):
             return self.coordinator.data.get("currency")
-        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -468,7 +468,7 @@ class TotalCostSensor(PrinterEnergySensor):
         """Return the currency unit."""
         if self.coordinator.data and self.coordinator.data.get("currency"):
             return self.coordinator.data.get("currency")
-        return self.coordinator.currency if hasattr(self.coordinator, "currency") else "RSD"
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:

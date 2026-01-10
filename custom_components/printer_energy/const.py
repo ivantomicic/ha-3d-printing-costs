@@ -9,17 +9,15 @@ CONF_PRINTING_SENSOR = "printing_sensor"
 CONF_PRINTING_STATE = "printing_state"
 CONF_ENERGY_ATTRIBUTE = "energy_attribute"
 CONF_MATERIAL_SENSOR = "material_sensor"
-CONF_ENERGY_COST_PER_KWH = "energy_cost_per_kwh"
+CONF_ENERGY_COST_SENSOR = "energy_cost_sensor"
+CONF_CURRENCY_SENSOR = "currency_sensor"
 CONF_MATERIAL_COST_PER_SPOOL = "material_cost_per_spool"
 CONF_MATERIAL_SPOOL_LENGTH = "material_spool_length"
-CONF_CURRENCY = "currency"
 
 DEFAULT_PRINTING_STATE = "on,printing,self-check"
 DEFAULT_ENERGY_ATTRIBUTE = "total_increased"
-DEFAULT_ENERGY_COST = 9  # $9 per kWh (common default)
 DEFAULT_MATERIAL_COST_PER_SPOOL = 0.0  # No default, user must configure
 DEFAULT_SPOOL_LENGTH = 330.0  # 330 meters per spool (common default)
-DEFAULT_CURRENCY = "RSD"  # Serbian Dinar
 
 ATTR_CURRENT_SESSION_ENERGY = "current_session_energy"
 ATTR_TOTAL_ENERGY = "total_energy"

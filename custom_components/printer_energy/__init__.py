@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from .const import DOMAIN
 from .coordinator import PrinterEnergyCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.NUMBER, Platform.TEXT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -54,15 +54,11 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     """Migrate old entry."""
     version = config_entry.version
     
-    # Migration from version 1 to 2: Add currency if missing
+    # Migration from version 1 to 2: Add currency if missing (deprecated - kept for compatibility)
     if version == 1:
-        from .const import CONF_CURRENCY, DEFAULT_CURRENCY
-        
-        new_data = {**config_entry.data}
-        if CONF_CURRENCY not in new_data:
-            new_data[CONF_CURRENCY] = DEFAULT_CURRENCY
-        
-        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+        # Skip this migration since currency is now handled via entity selector
+        # Just bump version to 2
+        hass.config_entries.async_update_entry(config_entry, version=2)
         version = 2
     
     # Migration from version 2 to 3: Migrate old shared storage to per-entry storage
@@ -82,6 +78,20 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             # Note: We don't delete old storage here to allow other instances to migrate
         
         hass.config_entries.async_update_entry(config_entry, version=3)
+        version = 3
+    
+    # Migration from version 3 to 4: Convert energy cost and currency to entity selectors
+    if version == 3:
+        # Old config uses CONF_ENERGY_COST_PER_KWH and CONF_CURRENCY
+        # New config uses CONF_ENERGY_COST_SENSOR and CONF_CURRENCY_SENSOR
+        # Remove old fields from data, they won't be used anymore
+        # Users will need to configure entity sensors/numbers via options flow
+        new_data = {**config_entry.data}
+        # Remove old fields that are no longer used
+        new_data.pop("energy_cost_per_kwh", None)
+        new_data.pop("currency", None)
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=4)
+        version = 4
     
     return True
 

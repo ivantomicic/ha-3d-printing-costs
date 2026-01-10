@@ -10,18 +10,16 @@ from homeassistant.const import CONF_NAME
 from homeassistant.helpers import selector
 
 from .const import (
-    CONF_CURRENCY,
+    CONF_CURRENCY_SENSOR,
     CONF_ENERGY_ATTRIBUTE,
-    CONF_ENERGY_COST_PER_KWH,
+    CONF_ENERGY_COST_SENSOR,
     CONF_ENERGY_SENSOR,
     CONF_MATERIAL_COST_PER_SPOOL,
     CONF_MATERIAL_SENSOR,
     CONF_MATERIAL_SPOOL_LENGTH,
     CONF_PRINTING_SENSOR,
     CONF_PRINTING_STATE,
-    DEFAULT_CURRENCY,
     DEFAULT_ENERGY_ATTRIBUTE,
-    DEFAULT_ENERGY_COST,
     DEFAULT_PRINTING_STATE,
     DEFAULT_SPOOL_LENGTH,
     DOMAIN,
@@ -31,7 +29,7 @@ from .const import (
 class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Printer Energy."""
 
-    VERSION = 3
+    VERSION = 4
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -43,18 +41,35 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             printing_sensor = user_input[CONF_PRINTING_SENSOR]
             material_sensor = user_input.get(CONF_MATERIAL_SENSOR)
 
+            energy_cost_sensor = user_input.get(CONF_ENERGY_COST_SENSOR)
+            currency_sensor = user_input.get(CONF_CURRENCY_SENSOR)
+
             if self.hass.states.get(energy_sensor) is None:
                 errors[CONF_ENERGY_SENSOR] = "entity_not_found"
             elif self.hass.states.get(printing_sensor) is None:
                 errors[CONF_PRINTING_SENSOR] = "entity_not_found"
             elif material_sensor and material_sensor.strip() and self.hass.states.get(material_sensor) is None:
                 errors[CONF_MATERIAL_SENSOR] = "entity_not_found"
+            elif energy_cost_sensor and energy_cost_sensor.strip() and self.hass.states.get(energy_cost_sensor) is None:
+                errors[CONF_ENERGY_COST_SENSOR] = "entity_not_found"
+            elif currency_sensor and currency_sensor.strip() and self.hass.states.get(currency_sensor) is None:
+                errors[CONF_CURRENCY_SENSOR] = "entity_not_found"
             else:
-                # Clean up material sensor - remove if empty
+                # Clean up sensor values - remove if empty
                 if material_sensor and not material_sensor.strip():
                     user_input[CONF_MATERIAL_SENSOR] = None
                 elif material_sensor:
                     user_input[CONF_MATERIAL_SENSOR] = material_sensor.strip()
+                
+                if energy_cost_sensor and not energy_cost_sensor.strip():
+                    user_input[CONF_ENERGY_COST_SENSOR] = None
+                elif energy_cost_sensor:
+                    user_input[CONF_ENERGY_COST_SENSOR] = energy_cost_sensor.strip()
+                
+                if currency_sensor and not currency_sensor.strip():
+                    user_input[CONF_CURRENCY_SENSOR] = None
+                elif currency_sensor:
+                    user_input[CONF_CURRENCY_SENSOR] = currency_sensor.strip()
                 
                 # Check for duplicate entries
                 unique_id_parts = [energy_sensor, printing_sensor]
@@ -95,10 +110,18 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         multiple=False,
                     )
                 ),
-                vol.Optional(
-                    CONF_ENERGY_COST_PER_KWH,
-                    default=DEFAULT_ENERGY_COST,
-                ): vol.Coerce(float),
+                vol.Optional(CONF_ENERGY_COST_SENSOR): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "number"],
+                        multiple=False,
+                    )
+                ),
+                vol.Optional(CONF_CURRENCY_SENSOR): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "number"],
+                        multiple=False,
+                    )
+                ),
                 vol.Optional(
                     CONF_MATERIAL_COST_PER_SPOOL,
                     default=0.0,
@@ -107,10 +130,6 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_MATERIAL_SPOOL_LENGTH,
                     default=DEFAULT_SPOOL_LENGTH,
                 ): vol.Coerce(float),
-                vol.Optional(
-                    CONF_CURRENCY,
-                    default=DEFAULT_CURRENCY,
-                ): str,
             }
         )
 
@@ -168,14 +187,29 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(
-                    CONF_ENERGY_COST_PER_KWH,
+                    CONF_ENERGY_COST_SENSOR,
                     default=self.config_entry.options.get(
-                        CONF_ENERGY_COST_PER_KWH,
-                        self.config_entry.data.get(
-                            CONF_ENERGY_COST_PER_KWH, DEFAULT_ENERGY_COST
-                        ),
+                        CONF_ENERGY_COST_SENSOR,
+                        self.config_entry.data.get(CONF_ENERGY_COST_SENSOR, ""),
                     ),
-                ): vol.Coerce(float),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "number"],
+                        multiple=False,
+                    )
+                ),
+                vol.Optional(
+                    CONF_CURRENCY_SENSOR,
+                    default=self.config_entry.options.get(
+                        CONF_CURRENCY_SENSOR,
+                        self.config_entry.data.get(CONF_CURRENCY_SENSOR, ""),
+                    ),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "number"],
+                        multiple=False,
+                    )
+                ),
                 vol.Optional(
                     CONF_MATERIAL_COST_PER_SPOOL,
                     default=self.config_entry.options.get(
@@ -192,13 +226,6 @@ class PrinterEnergyOptionsFlowHandler(config_entries.OptionsFlow):
                         ),
                     ),
                 ): vol.Coerce(float),
-                vol.Optional(
-                    CONF_CURRENCY,
-                    default=self.config_entry.options.get(
-                        CONF_CURRENCY,
-                        self.config_entry.data.get(CONF_CURRENCY, DEFAULT_CURRENCY),
-                    ),
-                ): str,
             }
         )
 

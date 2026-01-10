@@ -1,8 +1,8 @@
-"""Select platform for Printer Energy configuration."""
+"""Text platform for Printer Energy configuration."""
 
 from __future__ import annotations
 
-from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.components.text import TextEntity, TextEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
@@ -10,31 +10,24 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_CURRENCY, DEFAULT_CURRENCY, DOMAIN
+from .const import CONF_CURRENCY_SENSOR, CONF_ENERGY_COST_SENSOR, DOMAIN
 from .coordinator import PrinterEnergyCoordinator
 
 
-# Common currency codes
-CURRENCY_OPTIONS = [
-    "USD",
-    "EUR",
-    "GBP",
-    "RSD",
-    "JPY",
-    "CAD",
-    "AUD",
-    "CHF",
-    "CNY",
-    "INR",
-]
-
-
-SELECT_ENTITIES = (
-    SelectEntityDescription(
-        key=CONF_CURRENCY,
-        name="Currency",
+TEXT_ENTITIES = (
+    TextEntityDescription(
+        key=CONF_ENERGY_COST_SENSOR,
+        name="Energy Cost Sensor",
         icon="mdi:currency-usd",
-        options=CURRENCY_OPTIONS,
+        native_min=0,
+        native_max=255,  # Max length for entity ID
+    ),
+    TextEntityDescription(
+        key=CONF_CURRENCY_SENSOR,
+        name="Currency Sensor",
+        icon="mdi:currency-usd",
+        native_min=0,
+        native_max=255,  # Max length for entity ID
     ),
 )
 
@@ -44,19 +37,19 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the printer energy select entities."""
+    """Set up the printer energy text entities."""
     coordinator: PrinterEnergyCoordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     entities = [
-        PrinterEnergySelect(coordinator, config_entry, desc)
-        for desc in SELECT_ENTITIES
+        PrinterEnergyText(coordinator, config_entry, desc)
+        for desc in TEXT_ENTITIES
     ]
 
     async_add_entities(entities)
 
 
-class PrinterEnergySelect(CoordinatorEntity, SelectEntity):
-    """Select entity for printer energy configuration."""
+class PrinterEnergyText(CoordinatorEntity, TextEntity):
+    """Text entity for printer energy configuration."""
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_has_entity_name = True
@@ -65,9 +58,9 @@ class PrinterEnergySelect(CoordinatorEntity, SelectEntity):
         self,
         coordinator: PrinterEnergyCoordinator,
         config_entry: ConfigEntry,
-        description: SelectEntityDescription,
+        description: TextEntityDescription,
     ) -> None:
-        """Initialize the select entity."""
+        """Initialize the text entity."""
         super().__init__(coordinator)
         self.entity_description = description
         self.config_entry = config_entry
@@ -81,21 +74,24 @@ class PrinterEnergySelect(CoordinatorEntity, SelectEntity):
         }
 
     @property
-    def current_option(self) -> str | None:
-        """Return the current selected option."""
+    def native_value(self) -> str:
+        """Return the current entity ID."""
         config = {**self.config_entry.data}
         if self.config_entry.options:
             config.update(self.config_entry.options)
+        return config.get(self.entity_description.key, "") or ""
 
-        if self.entity_description.key == CONF_CURRENCY:
-            return config.get(CONF_CURRENCY, DEFAULT_CURRENCY)
-        return None
+    async def async_set_value(self, value: str) -> None:
+        """Update the entity ID."""
+        # Clean up empty values
+        if not value or not value.strip():
+            value = None
+        else:
+            value = value.strip()
 
-    async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
         # Update config entry options
         new_options = {**self.config_entry.options}
-        new_options[self.entity_description.key] = option
+        new_options[self.entity_description.key] = value
 
         # Update coordinator config
         coordinator_config = {**self.config_entry.data, **new_options}

@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -86,7 +87,7 @@ class PrinterEnergySensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{config_entry.entry_id}_{self.entity_key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get("name", "3D Printer Energy Tracker"),
+            "name": config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker"),
             "manufacturer": "Custom",
             "model": "3D Printer Energy Tracker",
         }

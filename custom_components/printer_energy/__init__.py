@@ -9,7 +9,7 @@ from homeassistant.const import Platform
 from .const import DOMAIN
 from .coordinator import PrinterEnergyCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON, Platform.NUMBER, Platform.SELECT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

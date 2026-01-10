@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -41,8 +42,8 @@ class ResetDataButton(CoordinatorEntity, ButtonEntity):
         self._attr_unique_id = f"{config_entry.entry_id}_reset_data"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get("name", "3D Printer Energy Tracker"),
-            "manufacturer": "Ivan's HA Stuff",
+            "name": config_entry.data.get(CONF_NAME, "3D Printer Energy Tracker"),
+            "manufacturer": "Custom",
             "model": "3D Printer Energy Tracker",
         }
 

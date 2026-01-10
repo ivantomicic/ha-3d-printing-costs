@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import PrinterEnergyCoordinator
+from .helpers import slugify_device_name
 
 
 async def async_setup_entry(
@@ -41,10 +42,13 @@ class ResetDataButton(CoordinatorEntity, ButtonEntity):
         """Initialize the reset button."""
         super().__init__(coordinator)
         self.config_entry = config_entry
-        self._attr_unique_id = f"{config_entry.entry_id}_reset_data"
+        # Get device name and slugify it for entity ID
+        device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker")
+        device_slug = slugify_device_name(device_name)
+        self._attr_unique_id = f"{device_slug}_reset_data"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker"),
+            "name": device_name,
             "manufacturer": "Custom",
             "model": "3D Printer Energy Tracker",
         }

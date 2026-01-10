@@ -17,6 +17,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .helpers import slugify_device_name
+
 from .const import (
     ATTR_LAST_PRINT_ENERGY,
     ATTR_LAST_PRINT_ENERGY_COST,
@@ -32,12 +34,6 @@ from .const import (
     ATTR_TOTAL_MATERIAL,
     ATTR_TOTAL_MATERIAL_COST,
     DOMAIN,
-    SENSOR_LAST_PRINT_COST,
-    SENSOR_LAST_PRINT_ENERGY,
-    SENSOR_LAST_PRINT_MATERIAL,
-    SENSOR_PRINT_COUNT,
-    SENSOR_TOTAL_COST,
-    SENSOR_TOTAL_ENERGY,
 )
 from .coordinator import PrinterEnergyCoordinator
 
@@ -77,10 +73,13 @@ class PrinterEnergySensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.config_entry = config_entry
-        self._attr_unique_id = f"{config_entry.entry_id}_{self.entity_key}"
+        # Get device name and slugify it for entity ID
+        device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker")
+        device_slug = slugify_device_name(device_name)
+        self._attr_unique_id = f"{device_slug}_{self.entity_key}"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
-            "name": config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker"),
+            "name": device_name,
             "manufacturer": "Custom",
             "model": "3D Printer Energy Tracker",
         }
@@ -108,7 +107,7 @@ class TotalEnergySensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_TOTAL_ENERGY
+        return "total_energy"
 
     @property
     def native_value(self) -> float:
@@ -165,7 +164,7 @@ class PrintCountSensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_PRINT_COUNT
+        return "print_count"
 
     @property
     def native_value(self) -> int:
@@ -206,7 +205,7 @@ class LastPrintEnergySensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_LAST_PRINT_ENERGY
+        return "last_print_energy"
 
     @property
     def native_value(self) -> float:
@@ -260,7 +259,7 @@ class LastPrintMaterialSensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_LAST_PRINT_MATERIAL
+        return "last_print_material"
 
     @property
     def native_value(self) -> float:
@@ -309,7 +308,7 @@ class LastPrintCostSensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_LAST_PRINT_COST
+        return "last_print_cost"
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -362,7 +361,7 @@ class TotalCostSensor(PrinterEnergySensor):
     @property
     def entity_key(self) -> str:
         """Return the entity key."""
-        return SENSOR_TOTAL_COST
+        return "total_cost"
 
     @property
     def native_unit_of_measurement(self) -> str:

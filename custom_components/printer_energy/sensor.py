@@ -307,7 +307,7 @@ class LastPrintMaterialSensor(PrinterEnergySensor):
 
     _attr_name = "Last Print Material"
     _attr_native_unit_of_measurement = "mm"
-    _attr_icon = "mdi:roll"
+    _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
@@ -409,7 +409,7 @@ class TotalCostSensor(PrinterEnergySensor):
     """Sensor for total cost across all prints."""
 
     _attr_name = "Total Cost"
-    _attr_icon = "mdi:currency-usd-circle"
+    _attr_icon = "mdi:cash"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     @property

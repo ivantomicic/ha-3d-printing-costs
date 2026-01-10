@@ -79,13 +79,13 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
 
                 return self.async_create_entry(
-                    title=user_input.get(CONF_NAME, "3D Printer Energy Tracker"),
+                    title=user_input.get(CONF_NAME, "3D Printer Cost Tracker"),
                     data=user_input,
                 )
 
         schema = vol.Schema(
             {
-                vol.Optional(CONF_NAME, default="3D Printer Energy Tracker"): str,
+                vol.Optional(CONF_NAME, default="3D Printer Cost Tracker"): str,
                 vol.Required(CONF_ENERGY_SENSOR): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor",

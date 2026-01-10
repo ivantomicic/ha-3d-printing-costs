@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick update script for Ivan's HA Stuff - 3D Printer Energy Tracker
+# Quick update script for Ivan's HA Stuff - 3D Printer Cost Tracker
 # Usage: ./update_version.sh 1.0.1 "Release message"
 
 if [ -z "$1" ]; then

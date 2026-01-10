@@ -22,7 +22,7 @@ git init
 git add .
 
 # First commit
-git commit -m "Initial commit - 3D Printer Energy Tracker v1.0.0"
+git commit -m "Initial commit - 3D Printer Cost Tracker v1.0.0"
 
 # Add remote (UPDATE WITH YOUR USERNAME if different from 'ivans-ha-stuff')
 git remote add origin https://github.com/ivans-ha-stuff/ha-3d-printing-costs.git
@@ -35,9 +35,10 @@ git push -u origin main
 ### Step 3: Update GitHub Username (if needed)
 
 If your GitHub username is **NOT** `ivans-ha-stuff`, update these files:
-- `custom_components/printer_energy/manifest.json` - Replace `ivans-ha-stuff` with your username
-- `README.md` - Replace all `ivans-ha-stuff` with your username
-- `update_version.sh` - Update the GitHub URL
+
+-   `custom_components/printer_energy/manifest.json` - Replace `ivans-ha-stuff` with your username
+-   `README.md` - Replace all `ivans-ha-stuff` with your username
+-   `update_version.sh` - Update the GitHub URL
 
 ### Step 4: Enable GitHub Actions
 
@@ -65,11 +66,12 @@ GitHub Actions will automatically create the release! 🎉
 ```
 
 This script:
-- ✅ Updates version in manifest.json
-- ✅ Commits changes
-- ✅ Pushes to main
-- ✅ Creates and pushes release tag
-- ✅ GitHub Actions creates the release automatically
+
+-   ✅ Updates version in manifest.json
+-   ✅ Commits changes
+-   ✅ Pushes to main
+-   ✅ Creates and pushes release tag
+-   ✅ GitHub Actions creates the release automatically
 
 ### Manual Update
 
@@ -88,26 +90,29 @@ git push origin v1.0.1
 ## 📋 Checklist
 
 Before publishing:
-- [ ] GitHub repository created and is **PUBLIC**
-- [ ] All files committed and pushed
-- [ ] GitHub username updated everywhere (if different from `ivans-ha-stuff`)
-- [ ] GitHub Actions enabled
-- [ ] First release created (v1.0.0)
+
+-   [ ] GitHub repository created and is **PUBLIC**
+-   [ ] All files committed and pushed
+-   [ ] GitHub username updated everywhere (if different from `ivans-ha-stuff`)
+-   [ ] GitHub Actions enabled
+-   [ ] First release created (v1.0.0)
 
 ## 🎯 What Users Will See
 
 When users add your repository to HACS:
+
 1. They add: `https://github.com/ivans-ha-stuff/ha-3d-printing-costs`
-2. HACS shows: **"3D Printer Energy Tracker"**
+2. HACS shows: **"3D Printer Cost Tracker"**
 3. They can download and install directly
 4. Updates show up automatically in HACS
 
 ## 📚 Full Documentation
 
 For detailed information:
-- **HACS_SETUP.md** - Complete setup guide
-- **.github/RELEASE.md** - Release process details
-- **README.md** - User documentation
+
+-   **HACS_SETUP.md** - Complete setup guide
+-   **.github/RELEASE.md** - Release process details
+-   **README.md** - User documentation
 
 ## ⚠️ Important Notes
 
@@ -119,17 +124,20 @@ For detailed information:
 ## 🔧 Troubleshooting
 
 **"HACS can't find integration"**
-- ✅ Check repository is public
-- ✅ Verify `hacs.json` exists
-- ✅ Ensure first release is created with `v*` tag
+
+-   ✅ Check repository is public
+-   ✅ Verify `hacs.json` exists
+-   ✅ Ensure first release is created with `v*` tag
 
 **"GitHub Actions not working"**
-- ✅ Enable Actions in Settings → Actions → General
-- ✅ Check workflow permissions
+
+-   ✅ Enable Actions in Settings → Actions → General
+-   ✅ Check workflow permissions
 
 **"Users can't install"**
-- ✅ Verify release has correct structure
-- ✅ Check `custom_components/printer_energy/` exists in release
+
+-   ✅ Verify release has correct structure
+-   ✅ Check `custom_components/printer_energy/` exists in release
 
 ---
 

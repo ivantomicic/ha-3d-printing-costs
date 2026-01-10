@@ -41,13 +41,13 @@ class ResetDataButton(CoordinatorEntity, ButtonEntity):
         """Initialize the reset button."""
         super().__init__(coordinator)
         self.config_entry = config_entry
-        device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Energy Tracker")
+        device_name = config_entry.data.get(CONF_NAME, config_entry.title or "3D Printer Cost Tracker")
         self._attr_unique_id = f"{config_entry.entry_id}_reset_data"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, config_entry.entry_id)},
             "name": device_name,
             "manufacturer": "Custom",
-            "model": "3D Printer Energy Tracker",
+            "model": "3D Printer Cost Tracker",
         }
 
     @property

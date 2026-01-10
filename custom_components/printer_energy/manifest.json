@@ -1,6 +1,6 @@
 {
 	"domain": "printer_energy",
-	"name": "3D Printer Energy Tracker",
+	"name": "3D Printer Cost Tracker",
 	"codeowners": ["@ivans-ha-stuff"],
 	"config_flow": true,
 	"dependencies": [],

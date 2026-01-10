@@ -11,8 +11,10 @@ This guide will help you prepare and publish this integration to HACS.
 ## 📝 Current Configuration
 
 ### Brand Name: **Ivan's HA Stuff**
+
 ### Repository: `ivans-ha-stuff/ha-3d-printing-costs`
-### Integration Name: **3D Printer Energy Tracker**
+
+### Integration Name: **3D Printer Cost Tracker**
 
 ## 🚀 Setup Steps
 
@@ -22,7 +24,7 @@ This guide will help you prepare and publish this integration to HACS.
 cd /Users/ivantomicic/Desktop/hass-plugins/ha-3d-printing-costs
 git init
 git add .
-git commit -m "Initial commit - 3D Printer Energy Tracker v1.0.0"
+git commit -m "Initial commit - 3D Printer Cost Tracker v1.0.0"
 ```
 
 ### 2. Create GitHub Repository
@@ -47,11 +49,13 @@ git push -u origin main
 If your GitHub username is NOT `ivans-ha-stuff`, update these files:
 
 **Files to update:**
-- `custom_components/printer_energy/manifest.json` - Update `codeowners`, `documentation`, and `issue_tracker` URLs
-- `README.md` - Update all GitHub URLs
+
+-   `custom_components/printer_energy/manifest.json` - Update `codeowners`, `documentation`, and `issue_tracker` URLs
+-   `README.md` - Update all GitHub URLs
 
 **Example:**
 If your username is `ivan123`, update:
+
 ```json
 "codeowners": ["@ivan123"],
 "documentation": "https://github.com/ivan123/ha-3d-printing-costs",
@@ -71,22 +75,25 @@ If your username is `ivan123`, update:
 #### Option A: Using GitHub Actions (Recommended)
 
 1. Update version in `custom_components/printer_energy/manifest.json`:
-   ```json
-   "version": "1.0.0"
-   ```
+
+    ```json
+    "version": "1.0.0"
+    ```
 
 2. Commit and push:
-   ```bash
-   git add custom_components/printer_energy/manifest.json
-   git commit -m "Release v1.0.0"
-   git push
-   ```
+
+    ```bash
+    git add custom_components/printer_energy/manifest.json
+    git commit -m "Release v1.0.0"
+    git push
+    ```
 
 3. Create and push tag:
-   ```bash
-   git tag -a v1.0.0 -m "Release v1.0.0"
-   git push origin v1.0.0
-   ```
+
+    ```bash
+    git tag -a v1.0.0 -m "Release v1.0.0"
+    git push origin v1.0.0
+    ```
 
 4. GitHub Actions will automatically create the release with archives
 
@@ -97,10 +104,10 @@ If your username is `ivan123`, update:
 3. Title: `Release v1.0.1`
 4. Description: Use auto-generated release notes or add your own
 5. Upload files manually:
-   - Download the repository as ZIP
-   - Extract `custom_components` folder
-   - Create ZIP of `custom_components` folder
-   - Upload as release asset
+    - Download the repository as ZIP
+    - Extract `custom_components` folder
+    - Create ZIP of `custom_components` folder
+    - Upload as release asset
 6. Click **Publish release**
 
 ## 📦 Adding to HACS
@@ -114,15 +121,16 @@ Users can add your integration via:
 3. Add: `https://github.com/ivans-ha-stuff/ha-3d-printing-costs`
 4. Category: **Integration**
 5. Click **Add**
-6. Search for "3D Printer Energy Tracker"
+6. Search for "3D Printer Cost Tracker"
 7. Click **Download**
 
 ### For HACS Default Repository:
 
 To be included in HACS default repository (optional, requires approval):
-- The integration must meet HACS requirements
-- Open an issue at https://github.com/hacs/default
-- Request inclusion with repository link
+
+-   The integration must meet HACS requirements
+-   Open an issue at https://github.com/hacs/default
+-   Request inclusion with repository link
 
 ## 🔄 Easy Update Process
 
@@ -130,20 +138,20 @@ To be included in HACS default repository (optional, requires approval):
 
 1. **Make your changes** in the code
 2. **Update version** in `manifest.json`:
-   ```json
-   "version": "1.0.1"  // Increment version
-   ```
+    ```json
+    "version": "1.0.1"  // Increment version
+    ```
 3. **Commit changes**:
-   ```bash
-   git add .
-   git commit -m "Description of changes"
-   git push
-   ```
+    ```bash
+    git add .
+    git commit -m "Description of changes"
+    git push
+    ```
 4. **Create release tag**:
-   ```bash
-   git tag -a v1.0.1 -m "Release v1.0.1"
-   git push origin v1.0.1
-   ```
+    ```bash
+    git tag -a v1.0.1 -m "Release v1.0.1"
+    git push origin v1.0.1
+    ```
 5. **GitHub Actions** creates the release automatically!
 
 ### Quick Update Script
@@ -171,17 +179,17 @@ echo "✅ Release v$VERSION created!"
 
 ## 📋 Checklist Before First Release
 
-- [x] All files committed to git
-- [x] Repository is public
-- [x] `hacs.json` exists and is correct
-- [x] `manifest.json` has correct URLs and version
-- [x] `README.md` is comprehensive
-- [x] `LICENSE` file exists
-- [x] GitHub Actions workflows are in place
-- [x] All GitHub URLs match your repository
-- [ ] Codeowners GitHub username is correct
-- [ ] Tested integration locally
-- [ ] First release created
+-   [x] All files committed to git
+-   [x] Repository is public
+-   [x] `hacs.json` exists and is correct
+-   [x] `manifest.json` has correct URLs and version
+-   [x] `README.md` is comprehensive
+-   [x] `LICENSE` file exists
+-   [x] GitHub Actions workflows are in place
+-   [x] All GitHub URLs match your repository
+-   [ ] Codeowners GitHub username is correct
+-   [ ] Tested integration locally
+-   [ ] First release created
 
 ## 🎯 Repository Structure
 
@@ -219,26 +227,30 @@ ha-3d-printing-costs/
 ## 🆘 Troubleshooting
 
 ### HACS not finding integration
-- ✅ Ensure repository is public
-- ✅ Check `hacs.json` exists and is valid JSON
-- ✅ Verify tag format is `v*` (e.g., `v1.0.0`)
-- ✅ Check `manifest.json` has correct domain
+
+-   ✅ Ensure repository is public
+-   ✅ Check `hacs.json` exists and is valid JSON
+-   ✅ Verify tag format is `v*` (e.g., `v1.0.0`)
+-   ✅ Check `manifest.json` has correct domain
 
 ### GitHub Actions not working
-- ✅ Enable Actions in repository settings
-- ✅ Check workflow permissions
-- ✅ Verify `.github/workflows/` files are committed
+
+-   ✅ Enable Actions in repository settings
+-   ✅ Check workflow permissions
+-   ✅ Verify `.github/workflows/` files are committed
 
 ### Users can't install
-- ✅ Verify release has correct archive format
-- ✅ Check `custom_components/printer_energy/` structure
-- ✅ Ensure all required files are included
+
+-   ✅ Verify release has correct archive format
+-   ✅ Check `custom_components/printer_energy/` structure
+-   ✅ Ensure all required files are included
 
 ## 📞 Support
 
 For issues with this setup guide or integration:
-- Open an issue on GitHub
-- Check HACS documentation: https://hacs.xyz/docs/publish/integration
+
+-   Open an issue on GitHub
+-   Check HACS documentation: https://hacs.xyz/docs/publish/integration
 
 ---
 

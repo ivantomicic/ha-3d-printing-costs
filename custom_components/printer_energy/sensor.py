@@ -250,7 +250,7 @@ class LastPrintMaterialSensor(PrinterEnergySensor):
     """Sensor for last print material consumption."""
 
     _attr_name = "Last Print Material"
-    _attr_native_unit_of_measurement = "mm"
+    _attr_native_unit_of_measurement = "cm"
     _attr_icon = "mdi:counter"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -261,9 +261,11 @@ class LastPrintMaterialSensor(PrinterEnergySensor):
 
     @property
     def native_value(self) -> float:
-        """Return the last print material usage."""
+        """Return the last print material usage in cm (converted from mm)."""
         if self.coordinator.data:
-            return round(self.coordinator.data.get("last_print_material", 0.0), 2)
+            # Convert from mm to cm (divide by 10)
+            mm_value = self.coordinator.data.get("last_print_material", 0.0)
+            return round(mm_value / 10.0, 2)
         return 0.0
 
     @property
@@ -310,8 +312,8 @@ class LastPrintEnergyCostSensor(PrinterEnergySensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement."""
-        return None  # Cost values don't need a currency unit - format in templates if needed
+        """Return the currency unit from energy cost sensor."""
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -359,8 +361,8 @@ class LastPrintMaterialCostSensor(PrinterEnergySensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement."""
-        return None  # Cost values don't need a currency unit - format in templates if needed
+        """Return the currency unit from energy cost sensor."""
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -408,8 +410,8 @@ class LastPrintTotalCostSensor(PrinterEnergySensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement."""
-        return None  # Cost values don't need a currency unit - format in templates if needed
+        """Return the currency unit from energy cost sensor."""
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:
@@ -459,8 +461,8 @@ class TotalCostSensor(PrinterEnergySensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement."""
-        return None  # Cost values don't need a currency unit - format in templates if needed
+        """Return the currency unit from energy cost sensor."""
+        return self.coordinator._get_currency()
 
     @property
     def native_value(self) -> float:

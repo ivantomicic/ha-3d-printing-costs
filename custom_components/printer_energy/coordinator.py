@@ -134,6 +134,32 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
             self.logger.warning(f"Could not parse energy cost from {self.energy_cost_sensor}: {state.state}")
             return 0.0
 
+    def _get_currency(self) -> str:
+        """Get currency from energy cost sensor's unit_of_measurement (e.g., 'RSD/kWh' -> 'RSD')."""
+        if not self.energy_cost_sensor:
+            return "RSD"  # Default currency
+        
+        state = self.hass.states.get(self.energy_cost_sensor)
+        if state is None:
+            return "RSD"
+        
+        # Try to extract currency from unit_of_measurement attribute
+        unit_of_measurement = state.attributes.get("unit_of_measurement")
+        if unit_of_measurement and isinstance(unit_of_measurement, str):
+            # If unit is like "RSD/kWh", extract "RSD"
+            if "/" in unit_of_measurement:
+                currency = unit_of_measurement.split("/")[0].strip().upper()
+                if currency:
+                    return currency
+            # If unit is just "RSD", use it directly
+            elif len(unit_of_measurement) <= 10:  # Reasonable currency code length
+                currency = unit_of_measurement.strip().upper()
+                if currency:
+                    return currency
+        
+        # Default fallback
+        return "RSD"
+
     async def async_config_entry_first_refresh(self) -> None:
         """Load persisted data on first refresh."""
         await self._load_persisted_data()

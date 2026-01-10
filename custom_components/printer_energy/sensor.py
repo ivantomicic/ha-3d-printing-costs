@@ -89,8 +89,14 @@ class PrinterEnergySensor(CoordinatorEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success
+        """Return if entity is available.
+        
+        Entities remain available even when source sensors are unavailable,
+        showing last known values instead of becoming unavailable.
+        """
+        # Always return True if coordinator has been initialized
+        # This allows sensors to show last known values even when source sensors are unavailable
+        return self.coordinator.data is not None
 
 
 class TotalEnergySensor(PrinterEnergySensor):

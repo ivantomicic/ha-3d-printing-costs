@@ -1,5 +1,6 @@
 """Printer Energy Tracker integration for Home Assistant."""
 
+import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -7,14 +8,28 @@ from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
 
 from .const import DOMAIN
-from .coordinator import PrinterEnergyCoordinator
-from .storage import PrintStorage
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up the Printer Energy Tracker integration."""
+    # Integration setup - just return True for config flow integrations
+    # The actual setup happens in async_setup_entry
+    _LOGGER.debug("Printer Energy Tracker integration setting up")
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Printer Energy Tracker from a config entry."""
+    # Import here to avoid import errors during integration discovery
+    from .coordinator import PrinterEnergyCoordinator
+    from .storage import PrintStorage
+
+    _LOGGER.debug("Setting up Printer Energy Tracker config entry: %s", entry.entry_id)
+
     # Initialize storage
     storage = PrintStorage(hass)
     await storage.async_load()
@@ -37,6 +52,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    # Import here to avoid import errors
+    from .coordinator import PrinterEnergyCoordinator
+
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
@@ -45,6 +63,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: PrinterEnergyCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         # Save storage before unloading
         await coordinator._storage.async_save()
+        _LOGGER.debug("Unloaded Printer Energy Tracker config entry: %s", entry.entry_id)
 
     return unload_ok
 

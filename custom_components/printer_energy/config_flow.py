@@ -1,5 +1,6 @@
 """Config flow for Printer Energy Tracker integration."""
 
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -19,6 +20,8 @@ from .const import (
     DOMAIN,
     NAME,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def validate_energy_sensor(hass: HomeAssistant, entity_id: str) -> str | None:
@@ -63,6 +66,7 @@ class PrinterEnergyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
+        _LOGGER.debug("Config flow user step called")
         errors: dict[str, str] = {}
 
         if user_input is not None:

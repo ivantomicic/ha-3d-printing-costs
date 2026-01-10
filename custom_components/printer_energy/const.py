@@ -16,7 +16,7 @@ CONF_CURRENCY = "currency"
 
 DEFAULT_PRINTING_STATE = "on,printing,self-check"
 DEFAULT_ENERGY_ATTRIBUTE = "total_increased"
-DEFAULT_ENERGY_COST = 0.12  # $0.12 per kWh (common default)
+DEFAULT_ENERGY_COST = 9  # $9 per kWh (common default)
 DEFAULT_MATERIAL_COST_PER_SPOOL = 0.0  # No default, user must configure
 DEFAULT_SPOOL_LENGTH = 330.0  # 330 meters per spool (common default)
 DEFAULT_CURRENCY = "RSD"  # Serbian Dinar

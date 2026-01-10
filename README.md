@@ -57,7 +57,7 @@ A comprehensive Home Assistant integration for tracking energy consumption, mate
    - **Printing Sensor**: Select sensor that indicates printing status (e.g., `binary_sensor.octoprint_printing`)
    - **Printing State**: Comma-separated states indicating printing (default: `on,printing,self-check`)
    - **Material Sensor** (optional): Select sensor tracking filament usage (e.g., `sensor.creality_k1c_used_material_length`)
-   - **Energy Cost per kWh**: Your electricity rate (default: `0.12`)
+   - **Energy Cost per kWh**: Your electricity rate (default: `9`)
    - **Material Cost per Spool**: Cost of one spool (e.g., `25.00`)
    - **Spool Length (meters)**: Length of filament per spool (default: `330`)
 4. Click **Submit**
@@ -168,7 +168,7 @@ Total Cost = Energy Cost + Material Cost
 - Spool Length: 330 meters
 - Cost per Meter: $25.00 / 330 = $0.0758/meter
 - Print uses: 5000mm (5 meters) = $0.38
-- Energy: 0.5 kWh at $0.12/kWh = $0.06
+- Energy: 0.5 kWh at $9/kWh = $0.06
 - **Total Print Cost: $0.44**
 
 ## Example Automations
@@ -233,7 +233,7 @@ template:
 - ✅ Material sensor should report in millimeters (mm)
 
 ### Costs showing as 0
-- ✅ Verify cost per kWh is configured (default: 0.12)
+- ✅ Verify cost per kWh is configured (default: 9)
 - ✅ Verify material cost per spool is configured if tracking material
 - ✅ Check spool length matches your filament type
 

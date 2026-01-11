@@ -109,7 +109,8 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
         self.energy_cost_sensor = energy_cost_sensor_config.strip() if energy_cost_sensor_config and isinstance(energy_cost_sensor_config, str) else (energy_cost_sensor_config if energy_cost_sensor_config else None)
         
         # Material cost configuration - cost per spool and spool length
-        self.material_cost_per_spool = float(config.get(CONF_MATERIAL_COST_PER_SPOOL, DEFAULT_MATERIAL_COST_PER_SPOOL))
+        raw_spool_cost = config.get(CONF_MATERIAL_COST_PER_SPOOL, DEFAULT_MATERIAL_COST_PER_SPOOL)
+        self.material_cost_per_spool = float(raw_spool_cost)
         # Spool length must be integer (no decimals)
         spool_length_raw = config.get(CONF_MATERIAL_SPOOL_LENGTH, DEFAULT_SPOOL_LENGTH)
         self.material_spool_length = float(int(spool_length_raw))
@@ -118,6 +119,10 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
             self.material_cost_per_meter = self.material_cost_per_spool / self.material_spool_length
         else:
             self.material_cost_per_meter = 0.0
+        self.logger.info(
+            f"Material cost config: raw={raw_spool_cost}, spool_cost={self.material_cost_per_spool}, "
+            f"spool_length={self.material_spool_length}, cost_per_meter={self.material_cost_per_meter}"
+        )
 
     def _get_energy_cost_per_kwh(self) -> float:
         """Get energy cost per kWh from selected sensor/number entity."""
@@ -424,6 +429,10 @@ class PrinterEnergyCoordinator(DataUpdateCoordinator):
                         self.last_print_material_cost = material_meters * self.material_cost_per_meter
                         self.total_material_cost += self.last_print_material_cost
                         self.current_session_material_cost = self.last_print_material_cost
+                        self.logger.info(
+                            f"Material cost calc: material_mm={session_material}, material_meters={material_meters}, "
+                            f"cost_per_meter={self.material_cost_per_meter}, cost={self.last_print_material_cost}"
+                        )
                     else:
                         self.current_session_material = 0.0
                         self.last_print_material_cost = 0.0
